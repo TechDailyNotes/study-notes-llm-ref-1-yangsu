@@ -1308,23 +1308,257 @@
 
 **算法**
 
-
+- todo
 
 ### CNN
 
 ### RNN
 
-### LSTM
+- 应用引入
+	- slot filling(ticket booking system)
+	- 需要“记忆力”，对上下文的理解，“记忆力”即指RNN
+- 发展
+	- Elman Network：上层input中hidden layer的值会被保存并参与下层input hidden layer的计算
+	- Jordan Network：上层output的值保存到下层input hidden layer的计算
+	- Bidirectional RNN：双向记忆，范围更广
+
+**LSTM**
+
+- simplified版本(simple RNN)
+	- memory storage：记忆模块，也就是LSTM的一个neuron
+	- input gate：选择是否把输入放入记忆
+	- forget gate：选择是否把记忆忘记或作format
+	- output gate：选择是否把记忆输出
+	- 加上初始输入，每个神经元一共4个input，所以(完全)LSTM的网络会有4倍的参数量
+	- 把neuron所有维度的4个input合成vector：z(input vector), z^i, z^f, z^o
+	- 于是一次在位置（时间）t的训练就是y^t=LSTM^t(z, z^i, z^f, z^o)
+- standard版本(multiple-layer LSTM)
+	- 在时间点t+1的输入会增加时间点t的hidden layer(称为h^t),一并训练x^t+1
+	- peephole: t+1的输入还会增加时间点t的memory(称为c^t),一并训练x^t+1
+- GRU：一个简化的LSTM，只有两个gate
+
+### GNN
+
+- 任务
+	- 分类：分子突变检测(Graph 2009)
+	- 生成：开发新型药物的化学分子(GraphVAE 2018)，todo (MolGAN)
+	- semi-supervised learning半监督，部分无标注信息的数据
+	- 表示学习：Graph InfoMax
+- 概念
+	- 每一个输入(entity)都有一些(attribute)，entity之间有复杂的结构和关联(structure, relation)
+	- 1.卷积神经网络的推广：spatial-based convolution, 基于不同的聚类(arggregation)方法
+		- sum: NN4G
+		- mean: DCNN, DGC, GraphSAGE
+		- weighted sum: MoNET, GAT*主要*, GIN
+		- LSTM & max pooling: GraphSAGE
+	- 2.信号处理的卷积：把图转为傅里叶域(Fourier domain) spectral-based convolution
+		- ChebNet -> GCN*主要* -> HyperGCN
+- benchmark数据集
+	- SuperPixel MNIST：图像分类
+	- ZINC molecule：预测分子溶解度
+	- SBM：graph pattern recognition和semi-supervised graph clustering
+	- TSP：边缘分类, traveling salesman problem
+	- CORA：citation network
+	- TU-MUTAG：todo
+- library：Deep Graph Library
+
+**Spatial-based GNN**
+
+- 概念
+	- aggreagate：用neighbor feature update下一层的hidden state
+	- readout：把所有nodes的feature集合起来代表整个graph
+- 发展
+	- NN4G(NN for Graphs, 2009)
+		- 把每个node通过一个embedding matrix得到feature
+		- 然后通过neigbor feature的aggregation得到每一层的hidden layer
+		- 每层的feature相加(sum的由来)得到整个graph(readout)
+	- DCNN(Diffusion CNN, 2015)
+		- 把每个node与和它相距为k的node的距离的平均值作为权重学习feature的vector(h_{node}^k)
+		- 所有的node的这个feature是一个相距为k的所有feature的一个矩阵H^k
+		- 所有k的可能排列成了一个多重矩阵网络，某一个node的训练就是通过h_{node}^{1...k}乘以一个训练矩阵W的输出
+	- DGC(Diffusion Graph Convolution)
+		- 把DCNN的每个H^k直接加起来训练而不是组成全连接网络
+	- MoNET(Mixture Model Network, 2016)
+		- 把feature计算的方式增加权重而不是直接加和或者取平均
+		- 定义了node之间*距离*的计算方式
+	- GraphSAGE(SAmple and aggreGatE, 2017)
+		- 使用了将node以不同顺序输入LSTM，邻居加和/求平均，和将feature作max-pooling的不同方法学习feature信息
+		- 与以前的模型比较，使用了mini-batch neighbor sampling
+		- 使用的是inductive learning，可以work在both indutive和transductive setting上
+	- GAT(Graph Attention Network, 2017)
+		- 对某一层各个node的feature计算其之间的energy e, 表示一个node对另一个的重要程度
+	- GIN(Graph Isomorphism Network, 2019)
+		- 提供了GNN某些feature learning的方法work的原因和证明
+		- 结论：update的方式应该遵循把邻居feature*相加*(而不是取平均或用pooling)后加上自己feature(可以额外增加一个极小值epilson的权重)后放入网络中训练
+
+**Spectral-based GNN**
+
+- 概念
+	- 图本身的convolution因为不在欧氏空间无法进行，但可以通过fourier transform把图转换到傅里叶域，在fourier domain里的convolution相当于multiplication，完成后做inverse傅里叶变换回原domain
+- 信号与系统 (to do more)
+	- 信号可以被看作N维空间的一个向量，是由一组basis经过线性组合*合成*的
+		- 信号A=sum(a_k v_k)
+	- 要知道信号的每一个component a_k的大小，就需要用*分析*
+		- a_j=A v_j=sum(a_k v_k) v_j 因为v_i v_j是正交的
+	- (时域time domain basis)对于一个周期性的信号，可以把它展开成一个由正余弦构成的傅里叶级数Fourier series
+		- x(t)=sum(a_k H_k(t))
+		- H_k(t): j-th harmonic components
+		- 这样就有方法算出a_k的大小(时域卷积公式)
+	- (频域frequency domain basis)
+		- x(t)=1/(2pi)'{X(jw)e^{jwt}}dw
+		- 其中e^{jwt}就代表了basis, X(jw)就是系数a_j
+		- 要找到X(jw)的值，也就是a_j，要用fourier transform
+		- X(jw)='{x(t)e^{-jwt}}dt 是inner product(分析),frequency domain的傅里叶变换
+	- 将信号(函数)在时域的正交基orthogonal basis和频域的正交基相互变换
+- 推导：Spectral Graph Theory
+	- 定义无向图G=(V, E), 邻接矩阵A, 度数矩阵(对角矩阵，diagonal项是当前node的邻居数)D, 信号函数(表示一个node的信号, 信号可以定义成任何统一的表示量)f：V -> R^N
+	- 图拉普拉斯变换 Graph Laplacian (L = D - A)
+		- GL矩阵L被定义为度数矩阵减去邻接矩阵
+		- (无向图)L对称symmetric, positive semidefinite
+		- L可以被谱分解(spectral decomposition)为U V U^T
+		- V=diag(v_0, ..., v_{N-1})特征值(eigenvalue)
+		- U=[u_0, ..., u_{N-1}] orthonormal的特征向量(eigenvector)
+		- v_l是频率(scalar)，u_l是对应v_l的basis(vector)
+		- L = U V U^T = [u_0, ..., u_{N-1}] diag(v_0, ..., v_{N-1}) [u_0, ..., u_{N-1}]^T
+	- Vertex domain signal
+		- f(node)是一个节点的信号量，所有node就可以写成一个f向量
+		- 同时可以写出其邻接矩阵A和度数矩阵D, 算出L, 继而算出U和V
+		- 于是就得到了每个频率v_l(代表每个node)的basis u_l
+	- Interpreting vertex frequency
+		- 我们把拉普拉斯矩阵和信号f相乘会如何?
+		- Lf = (D-A)f = Df - Af 是一个向量
+		- 每一个单位L_k f = D_k f - A_k f
+		- 也就是一个节点k，它的度数向量乘以所有节点的信号量，然后减去它的邻接向量乘以所有节点的信号量
+		- 度数向量只有它自己的那一column不为0(因为是diag), 所以D_k f就是它有几个neighbor乘以他自己的信号量
+		- 邻接向量就是他所有neighbor的信号量的和
+		- 所以，L_k f代表节点k和它旁边节点的能量差异
+	- 结论
+		- 为了表示能量差异的公平性，把它平方：f^T L f
+		- 结果简化后是$1/2\sum_{v_i\in V}\sum_{v_j \in V}w_{i,j}(f(v_i)-f(v_j))^2$，其中w_{i,j}代表A_{i,j}，也就是用邻接矩阵来表示(初始)学习权重
+		- 简单地说，就是节点之间的信号能量差("power" of signal variation between nodes), 或叫图信号的smoothness
+		- Discrete time Fourier basis 告诉我们信号频率和信号变化量的关系，频率越大，两点间信号的变化量越大，于是Spectral Graph Theory就可以用来量化信号的频率差异大小
+		- DZ component：同理，谱分解的结果也代表在频率v_l变高后，u_l basis向量(相当于能量)变化的差异变剧烈，在傅里叶变换里的sin/cos函数波动就更大
+- 实现
+	- 对于输入x，把x理解为上文的信号，我们要学习信号component V的大小
+	- Graph Fourier Transform of signal x(spectral domain, 分析)
+		- x'=U^Tx(vertext domain, 合成)
+		- U^T_k x 代表了V_k的大小
+	- Inverse Graph Fourier Transform of signal x
+		- simply：x = Ux'，从傅里叶反向变换回原域
+	- Filtering
+		- 就是用来学习V的转换矩阵，表示为g(V)，我们要在spectral domain得到 y' = g(V)x'
+		- 所以转换回来的 y = Uy' = Ug(V)U^Tx = g(UVU^T)x = g(L)x
+	- 问题：L中的V的学习过程是O(N)的复杂度，且g(L)非localize(见下)
+	- g(L)的选择
+		- 如果g(L)=L, y=Lx, 图只学习到距离为1的临近矩阵的信号信息
+		- 如果g(L)=l^2, 图会学习到最多距离为2的neighbor的信号信息
+		- 在CNN中，我们类似的学习附近pixel的信息
+		- 如果g(L)=cos(L)=I-L^2/2!+L^4/4!...，图会学习到无限延展递减的信号，但这样就不是*附近*(localize)的信息了
+- 发展
+	- ChebNet(2016)
+		- 解决了non-localized的问题
+		- 使用多项式参数化 g(L or V)：g(L or V)=sum_{k=i->K}(h_k L or V^k), 学习h_k，于是变成K-Localized
+		- y=Ug(V)U^Tx=U(sum_{k=i->K}(h_k L^k))U^Tx
+		- 但时间复杂度更高了，O(N^2)
+		- 解决：切比雪夫多项式Chebyshev polynomial，一个在L上循环的多项式
+		- T_0(x)=1, T_1(x)=x, T_2(x)=2xT_{k-1}(x)-T_{k-2}(x), x\in[-1,1]
+		- 此时V相当于要learn的x，假设在某次epoch后有V->V',那么在Cheb ploy中V'=2V/max(V)-I
+		- 把g(V)=sum(h_k V^k)转换成一个g(V')=sum(h_k' T_k(V'))，这个转换矩阵需要比原先的g(V)好算的多
+		- 注意g(L')x=h_0'T_0(L')x+h_1'T_1(L')x+...+h_K'T_K(L')x
+		- 根据Cheb ploy的上述性质，此式可写为h_0'x_0'+...+h_K'x_K'=[x_0' x_1' ... x_K'][h_0' h_1' ... h_K']，其中x_k'=T_k(L')x
+		- 而x_K是可以通过L递归计算的，时间复杂度最终变为O(KE)
+	- GCN(2018)
+		- 用ChebNet并且把K设为1，使用normalized Laplacian
+		- K=1相当于只关注邻近点
+		- normalized Laplacian的性质是L=I-D^{-1/2}AD^{-1/2}, 而且max(V)大约为2
+		- 于是L'=2L/max(V)-I=L-I
+		- 为了更加减少参数提升性能，定义h=h_0'=-h_1'
+		- 得到y=g(L')x=h_0'x+h_1'L'x=h_0'x+h_1'(L-I)x=h(I+D^{-1/2}AD^{-1/2})x
+		- 使用一种renormalization trick，y=h(D'^{-1/2}A'D'^{-1/2})x
+		- 最后学习的唯一变量 h_v = f(1/|V|sum(u, Wx_u+b))
+		- 简要意图就是把输入x通过一种变换后把它自己和所有邻近矩阵加和取平均，然后经过激活函数，学习feature h并迭代
+- 延申 (todo)
+	- GCN面临严重的深度收敛问题over-smoothing, 有DropEdge的方法改善
+	- GCN更深层效果反而不太好，亟待解决
+	- HyperGCN
+	- Graph Generation
+		- VAE based model
+		- GAN based model
+		- AR based model
+	- GNN for NLP
+		- Semantic Roles Labeling
+		- Event Dectection
+		- Document Time Stamping
+		- Name Entity Recognition
+		- Relation Extraction
+		- Knowledge Graph
 
 ### Attention
+
+- seq2seq: 模型决定生成几个label
+- sequence labeling: 每个seq对应一个label
+	- 上下文信息
+
+**self-attention**
+
+- 广义的Transformer，*结合*上层所有input的信息输出下层对应的output
+	- 上层input(query, key)的相关性attention score: dot-product, additive
+	- 做一个query和所有key的score之后归一如softmax, 得到所有alpha
+	- 每一个key乘以一个W矩阵得到v(相当于加权操作), 乘以所有alpha后加和得到b, 为那个query的最终output
+	- 总结
+		- input矩阵I的每一个input a分为(q, k, v), Q=W^qI, K=W^kI, V=W^vI
+		- alpha矩阵A=K^TQ, normaliz后得到A', A'被叫做Attention Matrix
+		- output矩阵O=VA'
+- multi-head self-attention
+	- 不同形式的相关性，多个W^q, W^k, W^v
+- 没有位置信息?
+	- 解决：positional encoding，输入a加一个e(positional vector)代表位置, hand crafted -> trainable(sinusoidal, position embedding, FLOATER, RNN)
+- 应用
+	- 语音辨识：Truncated self-attention, 使用部分句子
+	- 图像处理：self-attention GAN, DEtection Transformer(DETR)
+	- 图论：Attention Matrix就是邻接矩阵，直接设置不用训练了->是一种GNN
+- 对比CNN
+	- CNN只考虑感知域的信息，且人为设置，是一种简化版的self-attention
+	- self-attention的考虑范围大小是自动学习的，类似于复杂化的CNN
+	- 但更flexible的模型需要更大量的数据，不然容易overfit， CNN在小样本量时效果就比较好
+- 对比RNN
+	- RNN不能parallel并行，距离远的输入影响小
+	- 对self-attention来说没有距离的概念(无potitional encoding时)
 
 # NLP
 
 ### 词向量和语言模型
 
-### Word2Vec
+**Word Embedding**
 
-### GloVe
+- 概念
+	- 降维在NLP的应用
+	- 1-of-N Encoding -> dimension for "other", word hashing -> Word Class -> Word Embedding
+	- 把word映射到高维空间，想要实现类似语义的词距离相近
+	- 生成词向量是unsupervised, 不能用auto-encoder
+	- 词在context中可以被machine理解
+- 方法
+	- count based, 计算两词co-occur的频率(代表：Glove Vector)
+	- prediction based, 训练一个网络预测下一个word是什么
+		- shared parameters, n个1-of-N encoding的词作input预测下一个词，不同词*encoding*的权重必须一样
+		- continuous bag of word model (CBOW) model, 用前后词预测中间词
+		- skip-gram, 用中间词预测前后词
+- 特性
+	- 如：V(hotter)-V(hat)=V(bigger)-V(big), 类别的性质如“包含”可以被相似的表示出来，已知3个可以用来解另一个
+- 发展
+	- multi-lingual embedding
+		- 不同语言间没有关联，如果input只有一种语言
+		- 如果提前把语言词汇做projection，可以做到对新语言（在某些语言里没有训练集，某些语言里有时）翻译的效果
+	- multi-domain embedding
+		- 把图像和语义提前做projection，可以做到对新图像（在原图像集里没有，但有对应的语义时）分类的效果
+	- document embedding
+		- semantic embedding：变成bag-of-word，但忽略了word之间的位置信息
+		- (unsupervised) paragraph vector, seq2seq auto-encoder, skip thought
+		- more (todo)
+
+**Word2Vec** 
+
+**GloVe**
 
 ### Transformer
 
@@ -1506,9 +1740,9 @@
 	- 通过反卷积并不能还原卷积之前的矩阵，只能从大小上进行还原，反卷积的本质还是卷积，只是在进行卷积之前，会进行一个自动的padding补0，从而使得输出的矩阵与指定输出矩阵的shape相同
 	- 在进行反卷积的时候设置的stride并不是指反卷积在进行卷积时候卷积核的移动步长，而是被卷积矩阵填充的padding，在输入矩阵之间有一行和一列0的填充
 
-### 神经网络调参顺序
+### 神经网络参数总结
 
-
+- （大致顺序）初始学习率，优化方法，初始权重，隐藏单元，epoch，网络层数，学习率衰减，激活函数，batch size，BN，正则（dropout l1 l2等）
 
 # 参考资源
 
