@@ -1283,6 +1283,7 @@
 	- 一个自适应的重新参数化的方法，试图解决训练非常深层模型的困难
 	- 见Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
 	- 机器学习领域有一个很重要的假设：iid独立同分布假设，就是假设训练数据和测试数据满足相同分布，这是通过训练数据训练出来的模型能够在测试集上获得好的效果的一个基本保证，BN就是在深度神经网络训练过程中使得每一层神经网络的输入保持相同分布的方法
+	- 在神经网络训练时遇到收敛速度很慢，或梯度爆炸等无法训练的状况时可以尝试BN来解决
 
 **Internal Covariate Shift**
 
@@ -1296,21 +1297,117 @@
 - 深层神经网络在做非线性变换前的激活输入值随着网络深度加深或者在训练过程中，其分布逐渐发生偏移或者变动
 	- 收敛慢一般是整体分布逐渐往非线性函数的取值区间的上下限两端靠近（对于Sigmoid函数来说，意味着激活输入值WU+B是大的负值或者正值）
 	- 这导致梯度消失，这是训练深层神经网络收敛慢的本质原因
-	- BN把逐渐向取值区间极限饱和区靠拢的输入分布，强制拉回到均值为0方差为1的比较标准的正态分布，使得非线性变换函数的输入值落入对输入比较敏感的区域，以此避免梯度消失
-	- 因为梯度一直都能保持比较大的状态，所以很明显对神经网络的参数调整效率比较高，就是变动大，就是说向损失函数最优值迈动的步子大，也就是收敛地快
-- 但是有个问题，如果都通过BN，不就跟把非线性函数替换成线性函数效果相同了？
-	- 如果是多层的线性函数变换，其实这个深层是没有意义的，因为多层线性网络跟一层线性网络是等价的
+	- BN把逐渐向取值区间极限饱和区靠拢的输入分布，强制拉回到均值为0方差为1的比较标准的正态分布，使得非线性变换函数的输入值落入对输入比较敏感的区域
+	- 因为梯度一直都能保持比较大的状态，所以对神经网络的参数调整效率比较高，也就是收敛地快
+- 但如果都通过BN，就跟把非线性函数替换成线性函数了
+	- 这就会使得多层线性网络跟一层线性网络等价
 	- 比如在使用sigmoid激活函数的时候，如果把数据限制到零均值单位方差，那么相当于只使用了激活函数中近似线性的部分，这显然会降低模型的表达能力
 - 为了保证非线性，BN对变换满足均值为0方差为1的x又进行了scale加上shift操作(y=scale\*x+shift)
-	- 每个神经元增加两个参数scale和shift参数，这两个参数是通过训练学习到的
-	- 通过scale和shift把这个值从标准正态分布左移或者由移一点并长胖一点或者变瘦一点，每个实例挪动的程度不一样，等价于非线性函数的值从正中心周围的线性区往非线性区动了动，让因训练所需而“刻意”加入的BN能够有可能还原最初的输入
+	- 每个神经元增加scale和shift参数，这两个参数是通过训练学习到的
+	- 通过scale和shift把这个值从标准正态分布左移或者由移一点并长胖一点或者变瘦一点，每个实例挪动的程度不一样，等价于非线性函数的值从正中心周围的线性区往非线性区动，让因训练所需而“刻意”加入的BN能够有可能还原最初的输入
 	- 核心思想是想找到一个线性和非线性的较好平衡点，既能享受非线性的较强表达能力的好处，又避免太靠非线性区两头使得网络收敛速度太慢
+- BN对sigmoid激活函数的提升非常明显，解决了sigmoid过饱和的问题
+	- 但sigmoid在分类问题上确实没有ReLU好用，因为sigmoid的中间部分太“线性”，不像ReLU一个很大的转折，在拟合复杂非线性函数的时候没那么高效
 
 **算法**
 
-- todo
+- 每个隐层又加上了一层BN操作层，它位于X=WY+B激活值获得之后，非线性函数变换之前
+- 对mini-batch SGD，BN操作就是对于隐层内每个神经元的激活值，进行如下变换
+	- x' = (x - E[x]) / sqrt(Var[x])
+- 在理想情况下均值和方差是针对整个数据集的，但显然这不现实，因此用一个Batch的均值和方差作为对整个数据集均值和方差的估计
+- gain：把值往后续要进行的非线性变换的线性区拉动，增大梯度，增强反向传播信息流行性，加快训练收敛速度
+- lose：为了防止网络表达能力下降，每个神经元增加scale和shift，这俩个参数是通过训练来学习的，用来对x'反变换，这其实是变换的反操作
+	- y' = p_{scale} x' + p_{shift}
+
+**作用**
+
+- 可以使用很高的学习率
+	- 如果每层的scale不一致，其需要的学习率不一样，同一层不同维度的scale也需要不同大小的学习率，通常需要使用最小的那个学习率才能保证损失函数有效下降
+- 移除或使用较低的dropout
+	- dropout用来防止过拟合，而导致过拟合的位置往往在数据边界处，如果初始化权重就已经落在数据内部，过拟合就可以得到一定的缓解
+	- 论文中最后的模型分别使用10%、5%和0%的dropout训练模型，与之前的40%~50%相比，大大提高了训练速度
+- 降低L2权重衰减系数
+	- 边界处的局部最优往往有几维的权重（斜率）较大，使用L2衰减可以缓解这一问题，现在用BN就可以把这个值降低了，论文中降低为原来的5倍
+- 取消LRN层
+	- 由于使用了一种Normalization，再使用LRN就没那么必要了，而且LRN实际上也不怎么work
+- 减少图像扭曲的使用
+	- 由于现在训练epoch数降低，所以要对输入数据少做一些扭曲，让神经网络多看看真实的数据
 
 ### CNN
+
+**经典网络**
+
+- LeNet-5
+	- input (hand-written digits, 32 x 32 x 1) -> 6 of 5x5 conv (s=1, p=0) -> 28 x 28 x 6 -> avgPool(f=2, s=2) -> sigmoid -> 14 x 14 x 6 -> 16 of 5x5 conv (s=1, p=0) -> 10 x 10 x16 -> avgPool(f=2, s=2) -> sigmoid -> 5 x 5 x 16 -> FC(120) -> FC(84) -> sth before softmax -> 10 possible yHat
+	- 0.06 Mil 参数
+	- 还没有max pooling，padding，或softmax，ReLu
+	- 激活函数是sigmoid/tanh
+	- avgpooling-sigmoid时提到了一种graph transformer(现在几乎不用了)
+- AlexNet
+	- input (227 x 227 x 3) -> 11x11 conv (s=4) -> 55 x 55 x 96 -> 3x3 maxPool(s=2) -> 27 x 27 x 96 -> 5x5 conv -> 27 x 27 x 256 -> 3x3 maxPool(s=2) -> 13 x 13 x 256 -> 3x3 conv -> 13 x 13 x 384 -> 3x3 conv -> 13 x 13 x 384 -> 3x3 conv -> 13 x 13 x 256 -> 3x3 maxPool(s=2) -> 6 x 6 x 256 -> FC(4096) -> DC(4096) -> softmax(1000)
+	- 60 Mil 参数
+	- 包含更多的隐层和单元，使用了ReLu激活函数
+	- 使用了复杂的方法把模型拆分到两个GPU上做计算
+	- 使用了局部响应归一化层(Local Response Normalization, LRN层)，把不同channel进行了normalize，但被证明用处不大
+- VGG-16
+	- conv = 3x3, s=1, same
+	- maxPool = 2x2, s=2
+	- input (224 x 224 x 3) -> do 64 of conv 2 times -> 224 x 224 x 64 -> maxPool -> 112 x 112 x 64 -> do 128 of conv 2 times -> 112 x 112 x 128 -> maxPool -> 56 x 56 x 128 -> do 256 of conv 3 times -> 56 x 56 x 256 -> maxPool -> 28 x 28 x 256 -> do 512 of conv 3 times -> 28 x 28 x 512 -> maxPool -> 14 x 14 x 512 -> do 512 of conv 3 times -> 14 x 14 x 512 -> maxPool -> 7 x 7 x 512 -> FC(4096) -> FC(4096) -> softmax(1000)
+	- 138 Mil 参数
+	- 结构很重复，多但不复杂
+	- VGG-19：更多参数，但performance没有提升很多
+	- 比较有规律的地方：图像缩小的比例和通道增加的比例有关联
+
+**Inception(GoogLeNet)**
+
+- 概念
+	- 把各种不同的卷积和池化操作全部试一遍并concatenate在一起，让网络自己决定过滤器的组合
+	- input (28 x 28 x 192)
+	- 0-padding使前两个维度对上28 x 28, 第三个维度人为设置
+	- input -> 1x1 conv -> 0-padding -> 28 x 28 x 64
+	- input -> (1x1 conv) -> 3x3 conv -> 0-padding -> 28 x 28 x 128
+	- input -> (1x1 conv) -> 5x5 conv -> 0-padding -> 28 x 28 x 32
+	- input -> 3x3 maxPool -> 0-padding -> (1x1 conv) -> 28 x 28 x 32
+	- input -> ... -> concat -> 28 x 28 x 256
+	- 这整个流程叫一个Inception Block
+	- 8-10个Inception Block组成了Inception Network
+- 问题：计算时间成本高昂，解决：*1x1 conv* (bottleneck layer)
+	- 原本：28 x 28 x 192 -> 5x5 conv -> 28 x 28 x 32
+	- 计算次数为 5x5x192 x 28x28x32 = 120 Mil
+	- 改进：28 x 28 x 192 -> 1x1 conv -> 28 x 28 x 16 -> 5x5 conv -> 28 x 28 x 32
+	- 计算次数为 192 x 28x28x16 + 5x5x16 x 28x28x32 = 12.4 Mil
+- 延申
+	- 论文中在某些Inception Block的input后面还加入了一些side branches
+	- 把隐藏层的一部分拿出来，经过几个FC后作softmax，并参与最终预测
+	- 这样做从某种意义上实现了regularizing，防止了过拟合(参照ResNet的做法)
+
+**ResNet**
+
+- 概念
+	- “Plain Block”：一个神经元经过两层网络的一般形式（main path）
+		- input a_l -> MLP -> z_{l+1} -> ReLU(z_{l+1}) -> a_{l+1} -> MLP -> z_{l+2} -> ReLU(z_{l+2}) -> a_{l+2}
+	- Residual Block：在训练中途增加输入fast forward（short cut/skip connection）
+		- input a_l -> MLP -> z_{l+1} -> ReLU(z_{l+1}) -> a_{l+1} -> MLP -> z_{l+2} -> ReLU(z_{l+2} *+ a_l*) -> a_{l+2} 
+		- 这整个流程叫一个res block，多个res block相连就形成了ResNet
+	- 一般网络的训练误差在网络过于deep时会go back up，但ResNet却没有这个问题（即使网络达到100+的深度）
+- 为何有用
+	- ResNet的重点在于g(z_{l+2} + a_l)，g是激活函数
+	- 如果我们使用ReLu，经过前面network的激活，input a_l非负
+	- 如果z_{l+2}=0, 那么g(z_{l+2} + a_l) = g(a_l) = (因为a_l非负) a_l
+	- 由此可见Res Block很容易学习identity function
+	- 这意味着对比我们不加ResNet（也就是identity）的时候，加了ResNet起码不会使得网络变得更差，也就是说更深的网络不会hurt performance
+	- 那么当z_{l+2}!=0时，网络的性能就有可能提高
+- 延申
+	- 如果a_l和a_{l+2}的维度不一样，假设为m和n，我们需要增加
+		- z_{l+2} + W_s a_l
+		- W_s 的维度是 nxm，可以是一个正常参与训练的矩阵
+		- 或者直接0 padding a_l的剩余维度
+
+**应用**
+
+- 边缘检测(Edge Detection)
+	- vertical edge 3x3卷积核:[[1 1 1],[0 0 0],[-1 -1 -1]]
+	- 会将图像像素差异很大的部分提取出来，就实现了边缘检测
 
 ### RNN
 
@@ -1507,7 +1604,7 @@
 	- 每一个key乘以一个W矩阵得到v(相当于加权操作), 乘以所有alpha后加和得到b, 为那个query的最终output
 	- 总结
 		- input矩阵I的每一个input a分为(q, k, v), Q=W^qI, K=W^kI, V=W^vI
-		- alpha矩阵A=K^TQ, normaliz后得到A', A'被叫做Attention Matrix
+		- alpha矩阵A=K^TQ, normalize后得到A', A'被叫做Attention Matrix
 		- output矩阵O=VA'
 - multi-head self-attention
 	- 不同形式的相关性，多个W^q, W^k, W^v
@@ -1523,7 +1620,7 @@
 	- 但更flexible的模型需要更大量的数据，不然容易overfit， CNN在小样本量时效果就比较好
 - 对比RNN
 	- RNN不能parallel并行，距离远的输入影响小
-	- 对self-attention来说没有距离的概念(无potitional encoding时)
+	- 对self-attention来说没有距离的概念(无positional encoding时)
 
 # NLP
 
@@ -1562,13 +1659,216 @@
 
 ### Transformer
 
+- 是一种seq2seq的model：output的长度由机器自己决定，例子：
+	- speech recognition, machine translation（长度N->N'）
+	- speech translation, text-to-speech(TTS) Synthesis
+	- chatbot, (NLP) QA
+	- Suntactic Parsing 文法剖析
+	- multi-label classification (not multi-class)
+	- object detection
+- seq2seq (2014)
+	- Input -> Encoder -> Decoder -> Output
+
+**Encoder**
+
+- can use CNN, RNN or self-attention, 输入一排向量输出一排向量
+- (原始, 2002) Input -> positional embedding -> multi-head attention -> + Input (residual connection) -> layer norm -> FC -> + Input -> layer norm -> Output
+- (PowerNorm, 2003) Input -> positional embedding -> layer norm -> multi-head attention -> + Input -> layer norm -> FC -> + Input -> Output
+
+**Decoder**
+
+- Autoregressive (AT) decoder(例：Tacotron)
+	- begin of sentence (BOS, special token)
+	- 用自己的每一个输出当作下一个输入 (error propgation)，最后一个叫end of sentence (EOS, end token)
+	- 与encoder不同的
+		- masked self-attention, 第i个位置的key只关注<=i位置的query和v来输出
+		- 只考虑上文，因为decoder的方法也是从前往后产生block
+- Non-autoregressive (NAT) decoder(例：FastSpeech)
+	- 与AT decoder不同，一次输入所有input长度的BOS，然后直接完成句子每个token的输出
+	- 如何确定生成的长度
+		- learn另一个classifier预测
+		- 设置生成长度的阈值，截断后面的output(如果有的话)
+	- 优势：parallel并行，controllable的生成长度
+	- 劣势：performance经常比AT的差(Multi-modality)
+
+**Cross Attention**
+
+- 把encoder输出的结果和decoder的mask self-attention的结果再次做attention，叫做cross attention
+- 原始算法
+	- encoder输出的结果被当作一般attention的input a
+	- a进行矩阵变换得到key和v
+	- 然后decoder的mask self-attention的结果进行矩阵变换得到query
+	- 进行基于每个query的attention操作
+	- 最终的结果b被当作decoder后续FC的input
+- 发展算法(2020)
+	- todo
+
+**延申**
+
+- Teaching Forcing：训练时decoder的input会是正确答案(训练集)
+- Copy Mechanism：复述一部分input的词汇作output
+- Summarization：把题目当作摘要的训练答案
+- Guided Attention (todo)：人为引导attention的样貌，方式，顺序etc
+	- monotonic attention
+	- location-aware attention
+- Beam Search 束搜索
+	- Greedy Decoding 贪心的选择方式，一直选择概率最大的结果做decoding
+	- 但可能有全局的更优解，虽然单个output不是最佳的
+	- 因为无法检查所有可能的path，就有了beam search的方法 (todo)
+	- 对于比较确定答案的任务，beam search比较有帮助
+	- 对于比较发散性答案的任务，beam search需要加入一些randomness随机性，不然有陷入重复循环的问题(如句子补全，TTS)
+- 评估标准 BLEU score
+	- train时看cross-entropy
+	- validate，test时把结果和标准答案作比较(就叫BLEU score)
+	- exposure bias：指训练和测试的标准不同的问题
+		- 解决方向：train时加入错误讯息(Scheduled Sampling)
+		- 但有会伤害transformer平行化能力的问题(todo)
+
 ### HMM
 
 ### BERT
 
+- Bidirectional Encoder Representations from Transformers (BERT)
+- "the new era (of BIG models)"
+
+**Self-Supervised Learning**
+
 ### CRF
 
 ### LDA
+
+# CV
+
+- 计算机视觉现状
+	- Little Data (more hand-engineering, "hacks" <- transfer learning helps) - [ object detection - image recognition - speech recognition ] - Lots of Data (less hand-engineering)
+	- two sources of knowledge: Labeled data, hand engineered features/network architecture/other components
+	- tips for doing well on benchmarks/competitions
+		- ensembling
+		- multi-crop at test time (10-crop)
+
+### 目标检测(Object Detection)
+
+**目标定位(Object Localization)**
+
+- 图像分类 -> 图像定位 -> 图像检测
+- bounding box (4 #s): midpoint(bx, by), height(bh), width(bw)
+- class label (1 to n+1), n+1 = background (no object)
+- the output: y=[p_c, bx, by, bh, bw, c_1, c_2, c_3]^T
+	- p_c：有任何object的可能性
+	- c_k：class k
+	- 如果p_c = 0, 其他参数dont care
+	- b_i：必须在0和1之间，需要sigmoid和ReLu激活
+	- 损失函数：可以都是square loss，或者对p_c作logistic reg loss，对c_k作log likelihood loss
+
+**特征点检测(Landmark Detection)**
+
+- 实现计算机图形特效的key之一
+- 某一个特征点的位置(l_x, l_y)
+- people-pose detection 人物姿态检测，连续的特征点相连形成posture
+
+**two-stage算法**
+
+- 概述
+	- 将物体识别和物体定位分为两个步骤，分别完成
+	- 识别错误率和漏识别率低，但速度较慢，不能实时检测
+- R-CNN (2014)
+	- 用候选区域方法(region proposal method)创建目标检测的感兴趣区域(region of interest, ROI)
+		- 在选择性搜索（selective search，SS）中，首先将每个像素作为一组
+		- 然后，计算每一组的纹理，并将两个最接近的组结合起来
+		- 为了避免单个区域吞噬其他区域，首先对较小的组进行分组
+		- 继续合并区域，直到所有区域都结合在一起
+		- R-CNN 利用候选区域方法创建了约 2000 个 ROI
+		- 这些区域被转换为固定大小的图像，并分别馈送到卷积神经网络中（将原始图像根据ROI切割、reshape再送进NN学习）
+		- 该网络架构后面会跟几个全连接层，以实现目标分类并提炼边界框
+	- 候选区域方法有非常高的计算复杂度，为了加速这个过程，通常会使用计算量较少的候选区域选择方法构建 ROI，并在后面使用全连接层进一步提炼边界框
+	- 问题
+		- 候选框由传统的selective search算法完成，速度慢
+		- 对2000个候选框均需要做物体识别，也就是需要做2000次卷积网络计算，R-CNN很多卷积运算是重复的
+- Fast R-CNN (2015)
+	- 思路
+		- R-CNN的很多候选区域是彼此重叠的，因此训练和推断速度非常慢
+		- CNN中的特征图以一种密集的方式表征空间特征，能否直接使用特征图代替原图来检测目标？
+	- 优化
+		- 提出ROI pooling的池化结构，解决了候选框子图必须将图像裁剪缩放到相同尺寸大小的问题
+			- 由于CNN网络的输入图像尺寸必须是固定的某一个大小（否则全连接时没法计算），R-CNN中对大小形状不同的候选框，进行了裁剪和缩放，使得他们达到相同的尺寸
+			- 这个操作既浪费时间，又容易导致图像信息丢失和形变
+			- fast R-CNN在全连接层之前插入了ROI pooling层，不需要对图像进行裁剪
+			- 如果最终我们要生成MxN的图片，先将特征图水平和竖直分为M和N份，每一份取最大值，输出MxN的特征图，就实现了固定尺寸的图片输出
+	- 算法
+		- 使用CNN先提取特征图，而不是对每个子图进行卷积层特征提取
+		- 抛弃了selective search，使用RPN(候选区域网络，region proposal network)层生成候选框，并利用softmax判断候选框是前景还是背景，从中选取前景候选框（因为物体一般在前景中），并利用bounding box regression调整候选框的位置，从而得到特征子图，称为proposals
+		- 使用 ROI 池化将特征图块转换为固定大小，并送到全连接层
+		- 利用ROI层输出的特征图proposal，判断proposal的类别，同时再次对bounding box进行regression从而得到精确的形状和位置
+	- 优势
+		- 包含特征提取器、分类器和边界框回归器在内的整个网络能通过多任务损失函数进行端到端的训练，这种多任务损失结合了分类损失和定位损失的方法，大大提升了模型准确度
+
+**one-stage算法**
+
+- Sliding Window Detection
+	- 滑动窗口尝试每一块儿region看是否有target
+	- 然后增大窗口的大小（stride步幅），再重新尝试，迭代此操作
+	- 问题：计算成本极高，步幅太大还会hurt performance
+	- 在CNN里的解决
+		- 首先把FC层换成卷积层，比如：
+			- 5 x 5 x 16 -> FC(400) -> FC(400) -> softmax(4)
+			- 5 x 5 x 16 -> 400 of 5x5 conv -> 1 x 1 x 400 -> 400 of 1x1 conv -> 1 x 1 x 400 -> 4 of 1x1 conv -> 1 x 1 x 4
+		- (OverFeat)把滑动窗口的周围也放入输入，可以证明最终层的每个部分就是每个滑动窗口的结果，比如：
+			- 14 x 14 x 3 -> 5x5 conv -> 10 x 10 x 16 -> 2x2 maxPool -> 5 x 5 x 16 -> 5x5 FC -> 1 x 1 x 400 -> 1x1 FC -> 1 x 1 x 400 -> 1x1 FC -> 1 x 1 x 4
+			- 28 x 28 x 3 -> 5x5 conv -> 24 x 24 x 16 -> 2x2 maxPool -> 12 x 12 x 16 -> 5x5 FC -> 8 x 8 x 400 -> 1x1 FC -> 8 x 8 x 400 -> 1x1 FC -> 8 x 8 x 4
+			- 每个1x1x4在一起就代表了64种滑动窗口的输出
+		- 所以可以直接把整个图片共享计算
+	- 额外问题：bounding box的位置不够准确，且可能不是正方形，解决：YOLO
+- YOLO (you only look once, 2015)
+	- y如果有8维（1维p_c, 4维b, 3维物体种类）
+	- 滑动窗口的个数如果为3x3, 就是长宽一共分成3x3个窗口
+	- output就是 3 x 3 x 8
+	- 整个方法是单次卷积实现，运行特别快，因为不用重复滑动
+	- 而且位置和大小可以被清晰地标注出来
+	- 注意：y的p_c是根据中心点是否有物体决定的
+- SSD (Single Shot MultiBox Detector)
+	- 多尺寸feature map
+		- 每一个卷积层，都会输出不同大小的感受野
+		- 可以克服yolo对于宽高比不常见的物体识别准确率较低的问题
+	- 多个anchors
+	- 采用了数据增强
+		- 生成与目标物体真实box间IOU为0.1 0.3 0.5 0.7 0.9的patch，随机选取这些patch参与训练，并对他们进行随机水平翻转等操作
+	- 基础卷积网络采用mobileNet，适合在终端上部署和运行
+- YOLO V2
+	- 网络采用DarkNet-19
+	- 去掉全连接层
+	- 卷积层后加入BN
+	- 多个anchors
+	- pass through layer
+	- 高分辨率输入training
+	- multi-scale training
+- YOLO V3
+	- 网络采用DarkNet-53
+	- 添加了特征金字塔(FPN), 取代了特征提取器(如R-CNN的CNN), 可以更好地检测小目标
+- mask R-CNN, A-Fast-RCNN, Light-Head R-CNN, R-SSD, RON...(todo)
+
+**评价指标**
+
+- 交并比(Intersection over Union, IoU)
+	- IoU = size of [预测的] / size of [实际的]
+	- 一般 IoU >= 0.5 被认为correct (human convention, or 0.6/0.7)
+	- 衡量两个边界的重合比例
+
+**延申**
+
+- 非最大值抑制(Non-max suppression, NMS)
+	- 确保每个对象只被检测到一次而不是很多次
+	- 窗口很小的时候好几个窗口可能都会觉得物体的中点在自己里面
+	- 查看p_c c_k最高的bounding box并作高亮标记，如果别的预测box和这个的IoU很高(>= 0.5)，他们就会被抑制变暗
+	- 重复这个步骤直到所有box都被高亮或变暗，然后只保留高亮的结果
+- Anchor Boxes
+	- 用来检测多个不同的物体
+	- 先定义K个Anchor Box的形状(中心点，长宽)，代表K种想预测的物体类别
+	- new y=[y1, y2, ..., yK]，或者说如果y有8维，滑动窗口19 x 19，5个Anchor Box，new y的维度是19 x 19 x 5 x 8
+	- 预测时，查看bounding box的IoU和哪一种Anchor Box更高
+	- 优势：可以更有针对性的对不同形状的物体进行分辨
+	- 劣势：如果出现新的物体类别，或者两种物体Anchor Box的Shape相似，这个方法会陷入僵局
+	- 如何选择Anchor Box形状：可以human标注，或使用k-means聚类物体类别
+	- 
 
 # 问题汇总
 
@@ -1667,6 +1967,7 @@
 	- 当i=j时，dpj/dzi=(e^zj/sum(j: e^zj))'=(chain role) ((e^zj)'sum(j: e^zj)-e^zj e^zj)/(sum(j: e^zj)^2)=e^zj/sum(j, e^zj)-(e^zj/sum(j: e^zj))^2=pj(1-pj)
 	- 当i!=j时，dpj/dzi=(e^zj/sum(j: e^zj))'= (0 sum(j: e^zj)-e^zj e^zi)/(sum(j: e^zj))^2=-(e^zj/sum(j: e^zj))(e^zi/sum(j: e^zj))=-pjpi
 - log似然函数（交叉熵）指数形式求导
+	- 交叉熵最终公式：-reduce_sum(labels * log(softmax_out))
 	- 式子1-log似然函数: loss(i)=-log(pi)=-log(e^zi/sum(i: e^zi))=-(zi-log(sum(i: e^zi)))
 	- 式子2-交叉熵：L=-sum(i: yi log(pi))
 	- 这两者其实本质是一样的，对于式子1来说，只针对正确类别的对应的输出节点，将这个位置的softmax值最大化，而式子2则是直接衡量真实分布和实际输出的分布之间的距离
@@ -1684,6 +1985,7 @@
 - 解决方法
 	- 用ReLU激活函数取代sigmoid（这个主要是梯度消失）
 	- LSTM的结构可以改善RNN中的梯度消失问题
+	- ResNet的残差结构
 
 ### Numpy数组和pytorch tensor对比
 
@@ -1747,6 +2049,8 @@
 # 参考资源
 
 - https://plushunter.github.io/tech-stack/
-- 华为云
+- [李宏毅 ML](https://www.bilibili.com/video/BV1Wv411h7kN)
+- [吴恩达 DL](https://www.bilibili.com/video/BV1FT4y1E74V)
 - 知乎
 - CSDN
+- 华为云
