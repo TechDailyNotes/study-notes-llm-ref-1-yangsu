@@ -149,6 +149,7 @@
 		- 横坐标$TPR=\frac{TP}{TP+FN}$, 代表预测的正类中实际正实例占所有正实例的比例：直观上代表能将正例分对的概率
 		- 纵坐标$FPR=\frac{FP}{FP+TN}$, 代表预测的正类中实际负实例占所有负实例的比例：直观上代表将负类错分为正例的概率
 		- 优势：当测试集中的正负样本的分布变化的时候，ROC曲线能够保持不变。在实际的数据集中经常会出现非平衡数据的现象，即负样本比正样本多很多（或者相反），而且测试数据中的正负样本的分布也可能随着时间变化，而Precision-Recall曲线则对非平衡数据敏感
+		- 如果研究者希望更多地看到模型在*特定数据集*上的表现，P-R 曲线则能够更直观地反映其性能; 而ROC 曲线能够尽量降低不同测试集带来的干扰，更加客观地衡量*模型本身*的性能
 	- AUC(area under curve),作为数值直观地评价分类器的好坏，值越大越好
 		- AUC=1，完美分类器，采用这个预测模型时，存在至少一个阈值能得出完美预测，绝大多数场合，不存在完美的分类器
 		- AUC=[0.5,1]，优于随机猜测，这个分类器妥善设定阈值的话，有预测价值
@@ -469,15 +470,33 @@
 
 **拟牛顿法**
 
-- 为克服牛顿法的问题，提出了拟牛顿法，基本思想是不用二阶偏导数而构造出可以近似海森矩阵或者海森矩阵的逆的正定对称阵，在*拟牛顿条件*下优化目标函数
+- 为克服牛顿法的问题，提出了拟牛顿法，基本思想是不用二阶偏导数而构造出可以近似海森矩阵或者海森矩阵的逆的正定(positive definite)对称阵，在*拟牛顿条件*下优化目标函数
 - 对算法中用来计算搜索方向的海森矩阵（或海森矩阵的逆）作了近似计算
-- 拟牛顿条件（todo）
+- 拟牛顿条件(Secant equation)
+	- 设g_k = g(x_k) = f'(x_k)为函数f(x)的一阶导数在x_k点的值
+	- 且海森矩阵H_k(x) = [f''(x_i, x_j)]\_{nxn}
+	- 对f'(x)在x_k处做泰勒展开可以得到近似：f'(x)=g_k + H_k(x - x_k)
+	- 取x = x_{k+1}, 则 f'(x_{k+1}) = g_{k+1} = g_k + H_k(X_{k+1} - x_k)
+	- 可得 g_{k+1} - g_k = H_k(x_{k+1} - x_k)
+	- 令y_k=g_{k+1}-g_k, b_k=x_{k+1}-x_k, 拟牛顿条件定义为
+	- y_k = H_k b_k 且 H_k^(-1) y_k = b_k
 - DFP算法
 	- 通过迭代的方法，对海森矩阵的逆的正定对称阵做近似
+	- 用G_k代表对H_k^(-1)的近似，计算公式为
+	- G_{k+1} = G_k + (b_k b_k^T)/(b_k^T y_k) - (G_k y_k y_k^T G_k)/(y_k^T G_k y_k)
+	- 可证如果初始矩阵G_0正定对称，每个G_k都正定对称，一般取G_0 = I
 - BFGS算法
 	- 求解无约束非线性优化问题最常用的方法之一，有较完善的局部收敛理论
-	- 通过迭代的方法，直接逼近海森矩阵
-- L-BFGS算法（todo）
+	- 通过迭代的方法，直接逼近海森矩阵，比DFP更佳
+	- 用G_k代表对H_k的近似，计算公式为
+	- B_{k+1} = B_k + (y_k y_k^T)/(y_k^T b_k) - (B_k b_k b_k^T B_k)/(b_k^T B_k b_k)
+	- 同样的，如果初始矩阵B_0正定对称，每个B_k都正定对称，一般取B_0 = I
+	- 如果让G_k = B_k^(-1), 通过Sherman-Morrison公式可以将上述迭代公式改写为另一种G_{k+1}的计算方法
+- L-BFGS算法
+	- 在BFGS中存储N阶矩阵G_k消耗大量资源，L(limited-memory/storage)-BFGS减少了BFGS迭代所需的内存开销,对BFGS进行了近似
+	- 基本思想：不存储完整的矩阵G_k，而存储计算过程中的向量序列{b_k}{y_k}
+	- 而且向量序列只保留最新的m个，每次计算G_k时只利用最新的m个向量序列
+	- 存储空间由O(N^2)->O(mN)
 
 ### 线性回归
 
@@ -775,7 +794,7 @@
 ### 朴素贝叶斯
 
 - Naive Bayes对于给定的训练数据集，首先基于特征条件独立假设学习输入、输出的*联合分布*；然后基于此模型，对给定的输入x，利用贝叶斯定理求出后验概率最大的输出y
-- NB的强假设：各个特征互相独立
+- NB的强假设，“朴素的由来”：各个特征互相独立
 
 **推导**
 
@@ -1050,9 +1069,22 @@
 	- 由于核函数的优良品质，这样的非线性扩展在计算量上并没有比原来复杂多少
 	- 主要归功于核方法，除了SVM之外，任何将计算表示为数据点的内积的方法，都可以使用核方法进行非线性扩展
 
-**SMO启发算法**
+**SMO启发算法, 1998**
 
-- todo
+- Sequential Minimal Optimization，序列最小优化算法 基本思想
+	- 如果所有变量的解都满足最优化问题的KKT条件，这个优化问题的解就得到了，因为KKT条件是该优化问题的充分必要条件
+	- 否则，选择两个变量，固定其他变量，针对这两个变量构建一个二次规划问题
+	- 这个二次规划问题关于这两个变量的解应该更接近原始二次规划问题的解，因为这会使得原始问题的目标函数值变小
+	- 重要的是，这时子问题可以通过解析方法求解，这样就可以大大提升整个算法的计算速度
+	- 子问题有两个变量，一个是违反KKT条件最严重的那个，另一个由约束条件自动确定
+	- SMO算法将原问题不断分解为子问题并对子问题求解，进而求解原问题
+- 算法核心
+	- 一次选取两个坐标来进行优化，例如选a1和a2为变量，其余为常量，则
+	- sum(i=1->N: ai yi) = 0 -> a2 = 1/y2 (-sum(i=3->N: ai yi) - a1 y1) <-> y2(K - a1 y1), where K = -sum(i=3->N: ai yi) is constant
+	- 将这个式子代入原来的目标函数中，可以消去a2，从而变成一个一元二次函数,现在变成了一个带区间约束的一元二次函数极值问题
+	- 约束条件一个是a1本身需要满足0≤ai≤C,然后由于a2也要满足同样的约束，即：0≤y2(K−a1y1)≤C，可以得带a1的一个可行区间，同[0,C]交集即可得到最终的可行区间，在这个区间内求二次函数的最大值即可完成SMO的一步迭代
+	- 选取不同的两个coordinate维度进行优化，由于每一个迭代步骤实际上是一个可以直接求解的一元二次函数极值问题，所以求解非常高效
+	- 此外，SMO也并不是一次或随机地选取两个坐标函数极值问题，而是有一些启发式的策略来选取最优的两个坐标维度
 
 ### EM
 
@@ -1413,26 +1445,100 @@
 
 - 应用引入
 	- slot filling(ticket booking system)
+	- sequence data, spreading & sharing
 	- 需要“记忆力”，对上下文的理解，“记忆力”即指RNN
+- 概念
+	- 输入矩阵W_{ax}, 包含所有y_k
+	- 隐层矩阵W_{aa}, 包含所有sharing info vector a_k
+	- 输出矩阵W_{ya}, 包含所有x_k
+- 向前传播
+	- W_a = [W_{aa} | W_{ax}]
+	- a_t = g_1(W_{aa} a_{t-1} + W_{ax} x_t + b_a) = g_1(W_a [a_{t-1}, x_t]^T + b_a), g = tanh/ReLu
+	- y_t = g_2(W_{ya} a_t + b_y)
+- 损失函数（交叉熵）
+	- loss L(y, y') = sum(t : L_t(y_t, y'\_t))
+	- L_t(y_t, y'\_t) = - y_t log(y'\_t) - (1-y_t) log(1-y'\_t)
+- 不同结构的RNN
+	- one-to-one
+	- many-to-many: 一般形式，输入和输出同时进行
+		- 长度相同
+		- 长度不同：机器翻译，全部输入之后(encoder)输出所有结果(decoder)
+	- many-to-one: 全部输入之后输出单一结果
+	- one-to-many: 生成模型(sequence generation)，单一输入后输出所有结果
+- 语言模型(language modelling)
+	- 可用于生成模型
+	- tokenize, BOS, EOS (end of sentence), UNW (unknown word), 把这些加入dictionary并one-hot represent
+	- 把从0->t的输入放入RNN并预测下一个word
+	- 可以在训练好之后把第t个生成的输入放入RNN并sample下一个word
+	- 其他
+		- character-level语言模型，每个letter是一个输入
+		- 计算更昂贵，使用在专有问题上
 - 发展
 	- Elman Network：上层input中hidden layer的值会被保存并参与下层input hidden layer的计算
 	- Jordan Network：上层output的值保存到下层input hidden layer的计算
-	- Bidirectional RNN：双向记忆，范围更广
 
-**LSTM**
+**GRU**
+
+- 解决RNN中长句段的长期依赖引起梯度消失的问题，无法预测或记忆
+- 一个简化的LSTM，只有两个gate
+- simplified版本
+	- memory cell：记忆模块 c_t = a_t
+	- c'\_t = tanh(W_c [a_{t-1}, x_t]^T + b_c)
+	- gate_u = lambda(W_u [a_{t-1}, x_t]^T + b_u)
+	- c_t = gate_u * c'\_t + (1 - gate_u) * c_{t-1}
+	- forget gate_u用来决定是否把之前的值放入时间t的输入
+- visualization
+	- 上次输出c_{t-1}=a_{t-1}与这次输入x_t权重相加 = 这次总输入矩阵
+	- 经过tanh得到c'\_t
+	- 通过gate_u决定c'\_t舍弃和保留的部分，输出c_t=a_t
+	- 或者把a_t作softmax同时输出y_t
+- standard版本
+	- gate_r = lambda(W_r [a_{t-1}, x_t]^T + b_r)
+	- c'\_t = tanh(W_c [gate_r * a_{t-1}, x_t]^T + b_c)
+	- input(relevance) gate_r 表示c'\_t和c_{t-1}的相关性
+	- 实验表明这两个gate是最有效的
+
+**LSTM, 1997**
 
 - simplified版本(simple RNN)
 	- memory storage：记忆模块，也就是LSTM的一个neuron
-	- input gate：选择是否把输入放入记忆
-	- forget gate：选择是否把记忆忘记或作format
-	- output gate：选择是否把记忆输出
+	- input/update gate：选择是否把输入放入记忆, gate_u
+	- forget gate：选择是否把记忆忘记或作format, gate_f
+	- output gate：选择是否把记忆输出, gate_o
+	- c'\_t, gate_u 同simplified GRU
+	- gate_f = lambda(W_f [a_{t-1}, x_t]^T + b_f)
+	- gate_o = lambda(W_o [a_{t-1}, x_t]^T + b_o)
+	- c_t = gate_u * c'\_t + gate_f * c_{t-1}
+	- a_t = gate_o * tanh(c_t)
 	- 加上初始输入，每个神经元一共4个input，所以(完全)LSTM的网络会有4倍的参数量
 	- 把neuron所有维度的4个input合成vector：z(input vector), z^i, z^f, z^o
 	- 于是一次在位置（时间）t的训练就是y^t=LSTM^t(z, z^i, z^f, z^o)
+- visualization
+	- 与GRU相同的
+		- 上次输出a_{t-1}与这次输入x_t权重相加 = 这次总输入矩阵
+		- 经过tanh得到c'\_t
+	- 通过gate_u决定c'\_t保留的部分，输出c_t的一部分(u_t)
+	- 通过gate_f决定上次c_{t-1}保留的部分，输出c_t的另一部分(f_t)
+	- 两部分相加得到c_t
+	- c_t通过gate_o决定其保留的部分，输出a_t
+	- 或者把a_t作softmax同时输出y_t
 - standard版本(multiple-layer LSTM)
-	- 在时间点t+1的输入会增加时间点t的hidden layer(称为h^t),一并训练x^t+1
-	- peephole: t+1的输入还会增加时间点t的memory(称为c^t),一并训练x^t+1
-- GRU：一个简化的LSTM，只有两个gate
+	- peephole:总输入矩阵还会增加c_{t-1}
+
+**Bidirectional RNN (BRNN)**
+
+- 解决了之前网络中只利用forward info的问题，双向记忆
+- 每个RNN block加入另一个block，但反向连接，所有x_{t+1}=f(x_t)的部分变为X_{t-1}=f'(x_t), where f/f'代表整个变换
+- y_t = g(W_y[a_t(forward), a_t(backward)]^T + b_y)
+- 在NLP有完整句子输入时BRNN最为常用
+- 缺点：需要*整个*句子的info，在语言识别中就需要读完整个句子
+
+**Deep RNNs**
+
+- 每个input堆叠多层RNN block(a_{x,y})
+- column: x_k -> a_{1,k} -> a_{2,k} -> ... -> a_{k,n} -> y_k
+- row: a_{k,0} -> a_{k,1} -> ... -> a_{k,n}
+- 因为其庞大的计算量，n=3时网络已经可以称之为deep
 
 ### GNN
 
@@ -1624,10 +1730,16 @@
 
 # NLP
 
-### 词向量和语言模型
+### 词嵌入(Word Embedding)
 
-**Word Embedding**
-
+- 引入
+	- one-hot的缺点：每个词是孤立，onto itself的，两个词的内积永远是0
+	- 改进：featurized representation
+		- 把每个词设置K个feature并用他们表示word
+		- 如：word[man] -> feature[gender, age, action, food, ...]
+		- embedding matrix E with (K, vocab_count)
+		- E * O_k = e_k, embedding vector, 表示第k个词的embedding
+		- embedding layer: 直接用E的第k个列作lookup，如keras
 - 概念
 	- 降维在NLP的应用
 	- 1-of-N Encoding -> dimension for "other", word hashing -> Word Class -> Word Embedding
@@ -1641,21 +1753,73 @@
 		- continuous bag of word model (CBOW) model, 用前后词预测中间词
 		- skip-gram, 用中间词预测前后词
 - 特性
-	- 如：V(hotter)-V(hat)=V(bigger)-V(big), 类别的性质如“包含”可以被相似的表示出来，已知3个可以用来解另一个
-- 发展
-	- multi-lingual embedding
-		- 不同语言间没有关联，如果input只有一种语言
-		- 如果提前把语言词汇做projection，可以做到对新语言（在某些语言里没有训练集，某些语言里有时）翻译的效果
-	- multi-domain embedding
-		- 把图像和语义提前做projection，可以做到对新图像（在原图像集里没有，但有对应的语义时）分类的效果
-	- document embedding
-		- semantic embedding：变成bag-of-word，但忽略了word之间的位置信息
-		- (unsupervised) paragraph vector, seq2seq auto-encoder, skip thought
-		- more (todo)
+	- visualization：t-SNE(2008) 降维可视化word embeddings
+	- analogy reasoning：linguistic regularities(2013)
+		- 如：V(hotter)-V(hot)=V(bigger)-V(big)
+		- 类别的性质如“包含”可以被相似的表示出来，已知3个可以用来解另一个
+		- argmax(w: sim(V(?), V(hotter)-V(hot)+V(big)))
+		- sim: cosine similarity, sim(u, v) = (u^Tv)/(||u||\_2||v||\_2), 或在表达相似性时不太常用的Euclidean dist
+- 迁移学习transfer learning : A -> B
+	- 从大数据库(1B-100B)中学习词嵌入, A
+	- 迁移嵌入到100k左右大小的新训练集, B
+	- repeat
 
-**Word2Vec** 
+**类别**
 
-**GloVe**
+- multi-lingual embedding
+	- 不同语言间没有关联，如果input只有一种语言
+	- 如果提前把语言词汇做projection，可以做到对新语言（在某些语言里没有训练集，某些语言里有时）翻译的效果
+- multi-domain embedding
+	- 把图像和语义提前做projection，可以做到对新图像（在原图像集里没有，但有对应的语义时）分类的效果
+- document embedding
+	- semantic embedding：变成bag-of-word，但忽略了word之间的位置信息
+	- (unsupervised) paragraph vector, seq2seq auto-encoder, skip thought
+	- more (todo)
+
+**发展历程**
+
+- probabilistic neural network, 2003 
+	- 用前k(k=4)个词的embedding matrix E连接FC网络预测下一个词
+	- 更好的： 4 words on left & right/last 1 word
+- Word2Vec/skip-gram(word representation in vector space), 2013
+	- 概念
+		- 假设vocab size = 10k
+		- sample一个词c，并在上下文d个词距内sample一个词t
+		- 学习词c(context)对词t(target)的映射
+		- 希望看到input x=c时预测y=t的概率
+	- 实现
+		- EO_c = e_c -> softmax -> y
+		- softmax: p(t|c) = (exp(theta_t^T * e_c) / sum(j=1->10k : exp(theta_j^T * e_c)))
+		- theta_t : 关于output t的参数
+	- 问题：经过整个vocab，计算量太大
+	- 解决：分级softmax分类器hierarchical softmax classifier，一个分支定界的二叉树，不完美平衡
+	- 实际上会用别的方法平衡过于常用或rare的词来计算p(c)
+- 负采样negative sampling in skip-gram, 2013
+	- 概念
+		- 设定d之后，先进行一次和之前一样的sample，标记词c为context，词t为word，target标记为1代表正采样
+		- 再进行k次sample，使用相同的词c，但word从整个vocab里随机选择，target全部标记为0代表负采样（如果word其实正好是正采样也不care）
+	- 任务
+		- 学习x=(c, word)对y=target的映射
+		- 同样的，希望看到input x=c时预测y=t的概率
+		- 数据集小时，k可以选择5-20；大时2-5
+	- 实现
+		- 使用p(y=1|c,t) = lambda(theta_t^T * e_c)代替softmax
+		- 相对于原来softmax取最大概率，这个过程在学习[vocab size]个二分类问题
+		- 而且，每次训练迭代只使用k+1个样本，其中k个是负样本，大大减少了计算量
+	- 发展
+		- softmax相当于uniform均匀采样，这个相当于empirical经验/观测采样
+		- 论文通过实验发现更好的折中公式(todo)
+			- p(w_i)=f(w_i)^(3/4)/sum(j:f(w_j)^(3/4))
+- GloVe(global vectors for word representation), 2014
+	- 概念
+		- todo
+	- 实现
+		- x_{ij}: i(target)出现在j(context)(d词距)中的次数
+		- 目标：minimize sum(i,j: f(X_{ij}) * sim^2)
+		- sim: theta_i^T * e_j + b_i + b'\_j - log(X_{ij}), 表示目标的词嵌入与context词的内积与他们的权重的相似性
+		- f(X_{ij}):加权项，f(X_{ij})=0 if X_{ij}=0, 是一种启发式计算word frequency的方法
+	- visualization problem
+		- 这种相似性的学习是把featurization的很多维度结合在一起的，很难humanly可解释
 
 ### Transformer
 
@@ -1982,10 +2146,12 @@
 - gradient vanishing, gradient exploding problem
 - 都是因为网络太深，网络权值更新不稳定造成的
 - 本质是因为梯度反向传播中的连乘效应
-- 解决方法
+- 解决梯度消失
 	- 用ReLU激活函数取代sigmoid（这个主要是梯度消失）
 	- LSTM的结构可以改善RNN中的梯度消失问题
 	- ResNet的残差结构
+- 解决梯度爆炸
+	- gradient clipping，设置阈值
 
 ### Numpy数组和pytorch tensor对比
 
