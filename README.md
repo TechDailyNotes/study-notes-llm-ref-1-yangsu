@@ -1,9 +1,9 @@
 # Menu
 
-- [Machine Learning](machine learning.md)
-- [Deep Learning](deep learning.md)
-- [Natural Languag Processing](natural language processing.md)
-- [Computer Vision](computer vision.md)
+- [Machine Learning](machine_learning.md)
+- [Deep Learning](deep_learning.md)
+- [Natural Languag Processing](natural_language_processing.md)
+- [Computer Vision](computer_vision.md)
 - [Others](others.md)
 
 # Sources
