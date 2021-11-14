@@ -4,7 +4,8 @@
 - [Deep Learning](deep_learning.md)
 - [Natural Languag Processing](natural_language_processing.md)
 - [Computer Vision](computer_vision.md)
-- [Others](others.md)
+- [Basic Equations](basic_equations.py)
+- [Other Topics](others.md)
 
 # Sources
 
