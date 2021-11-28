@@ -1,6 +1,6 @@
 ### 1 Transformer
 
-- [Attention is all you need]
+- [Attention is all you need](https://arxiv.org/pdf/1706.03762.pdf)
 
 **Intro**
 
@@ -76,7 +76,7 @@
 
 ### 2 BERT
 
-- [BERT: Bidirectional Encoder Representations from Transformers]
+- [BERT: Bidirectional Encoder Representations from Transformers](https://arxiv.org/pdf/1810.04805.pdf)
 - GPT预测 -> BERT完形填空
 - GPT decoder -> BERT encoder
 
@@ -144,3 +144,7 @@
 	- GLUE (general language understanding evaluation)
 	- SQuAD 1.1, 2.0 (stanford QA dataset)
 	- SWAG (situations with adversarial generations)
+
+## 3 GNN
+
+- [A Gentle Introduction to GNNs](https://distill.pub/2021/gnn-intro/)
