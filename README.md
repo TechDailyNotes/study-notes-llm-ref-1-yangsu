@@ -5,6 +5,7 @@
 - [Natural Languag Processing](natural_language_processing.md)
 - [Computer Vision](computer_vision.md)
 - [Basic Equations](basic_equations.py)
+- [Papers](papers.md)
 - [Other Topics](others.md)
 
 # Sources
