@@ -1,4 +1,4 @@
-### 1 AlexNet
+## 1 AlexNet
 
 - [ImageNet Classification with Deep Convolutional Neural Networks](https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf)
 - remove per layer decrease 2% result: turns out its just params choice
@@ -28,7 +28,7 @@
 	- 50% prob set hidden layer neuron output to 0
 	- double the runtime to converge
 
-### 2 ResNet
+## 2 ResNet
 
 - [Deep Residual Learning for Image Recognition](https://arxiv.org/pdf/1512.03385.pdf)
 
@@ -72,7 +72,7 @@
 	- different in a way to idea of gradient boosting in machine learning: feature level residual instead of gradient level
 	- may be seen as a type of *inductive bias*
 
-### 3 Transformer
+## 3 Transformer
 
 - [Attention is all you need](https://arxiv.org/pdf/1706.03762.pdf)
 
@@ -148,7 +148,7 @@
 	- N = 6, d = 512, h = 8, d_fc = 4 x d = 2048, d_K = d_Q = d_V = 512
 	- drop% = 0.1, ls = 0.1, train step = 100k
 
-### 4 BERT
+## 4 BERT
 
 - [BERT: Bidirectional Encoder Representations from Transformers](https://arxiv.org/pdf/1810.04805.pdf)
 - GPT预测 -> BERT完形填空
