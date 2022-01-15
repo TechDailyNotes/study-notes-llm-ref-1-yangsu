@@ -409,7 +409,7 @@
 - image compare to words, one masked block do not form a *semantic segment/entities*, but can still learn semantics
 - can generate inexistent content (social use, be cautious)
 
-# 9 MoCo
+## 9 MoCo
 
 - [Momentum Contrast for Unsupervised Visual Representation Learning](https://arxiv.org/pdf/1911.05722.pdf)
 
