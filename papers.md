@@ -408,3 +408,155 @@
 - backbone: ViT, "simple" and scale well
 - image compare to words, one masked block do not form a *semantic segment/entities*, but can still learn semantics
 - can generate inexistent content (social use, be cautious)
+
+# 9 MoCo
+
+- [Momentum Contrast for Unsupervised Visual Representation Learning](https://arxiv.org/pdf/1911.05722.pdf)
+
+**Contrastive Learning**
+
+- is part of self-supervision
+- CL learns a feature space where similar samples are close to each other
+- there are many self-supervised *pretext tasks* (encoding method)
+- one is *instance discrimination*
+	- one sample is encoded to 2 positive samples, one of them is called archor
+	- all other encoded samples are negative samples
+	- metric is called *NCE loss*
+	- the power is that we can define pos, neg sample any way we want
+- inspire multimodal: CLIP from OpenAI
+
+**Intro**
+
+- in NLP, unsupervised learning is performed by mapping words to features
+- in CV, it is hard to do the mapping
+	- in NLP, words have strong semantic meaning themselves, they are discrete
+	- in CV, pixel does not contains much high level info, they are continuous
+- previous work builds *dynamic dictionary* (pos, neg samples)
+	- the goal is to minimize the *contrastive loss*
+	- treat the encoded pos, neg samples as *key*
+	- the archor as *query*
+	- want to learn a dictionary matching problem
+	- where the encoded query should be similar to its matching key
+	- and far away from other keys
+- dictionary type
+	- end-to-end: use same encoder for key and query (cannot big)
+	- memory bank: no encoder for key, save all encoded querys by different set of keys (not consistent -> but large)
+	- MoCo: ours
+- goal of dictionary
+	- large: avoid shortcut and weak learning
+	- consistent: keys should be encoded the same way
+	- MoCo designs a *momentum encoder* for keys to achieve this
+
+**Method**
+
+- CL builds discrete dictionary on high-dim continuous input (ie. image)
+- momentum encoder
+	- suppose the query encoder is Q_q
+	- then for key_k, the encoder Q_k = m * Q_(k-1) + (1-m) * Q_q
+	- experiment show big m (~= 1) is better: a slowly changing Q_k (->consistent)
+	- so it is a moving-average encoder of the key (-> consistent)
+	- also every key is put in a FIFO *queue* to save space (-> large)
+- CL as dictionary look-up
+	- only one pair of key k_i and query q matches
+	- want to measure their similarity
+	- since there are too many keys (neg), use noise controstive estimation
+	- NCE is an estimate of the real full data from 2-class classification: pos, neg
+	- NCE use softmax of the inner product of k_i & q
+	- InfoNCE loss: reduce the # of neg to K
+- Suffling BN
+	- use pure BN would leak info of key, make model do shortcut
+	- so shuffle sample order
+- result
+	- can outperform in 7 downstream tasks
+	- since it is unsupervised, MoCo can replace imageNet pretrained network
+	- because there are much more unlabeled images than labeled ones
+
+**Conclusion**
+
+- move from (labeled, 1M) imagenet to (unlabeled, 1B) instagram only gives < 1% increase in result
+	- maybe large scale dataset is not fully exploited
+	- hope an advanced pretext task will improve it
+	- masked auto-encoding ?
+- the main part to improve
+	- pretext task (?)
+	- loss function (MoCo)
+- pretext task
+	- reconstruct image, patches, colors ...
+	- data transformation, reordering, segmenting, tracking in video ...
+- loss
+	- "fixed" loss (vs. ground truth)
+	- contrastive loss: measure similarity
+	- adversarial loss: measure probabilistic distribution
+- in MoCo
+	- pretext task: instance discrimination
+	- loss: NCE
+	- these two can be matched pretty well
+
+## 10 Swin Transformer
+
+- [Swin Transformer: Hierarchical Vison Transformer using Shifted Windows](https://arxiv.org/pdf/2103.14030.pdf)
+- ViT to all vision tasks
+- challenge: scale and resolution of different tasks
+- method: (hierarchical) shifted windows, reduce size & share global info
+
+**Intro**
+
+- ViT 16x16 patch for segementation task for example, is both low resolution and comput. expensive (caz segmentation use over 1000x1000 pixels, but classification uses 224x224)
+- swin transformer uses self-attention on *each window* of the image
+	- first use 4x4 window, each has 4x4 patch
+	- shift each window and do self-attention on them to share global info
+- future: do shifted window on NLP
+
+**Method**
+
+- stage 1
+	- input image 224x224x3
+	- partition to 4x4 windows -> 56x56x48, where 48=4x4x3
+	- linear embedding -> 56x56x96, where 48 embedded to 96
+	- reshape to 1D (as NLP input for transformer)-> 3136x96, where 3136 is the length of input feature, 96 is the dim of each feature
+	- [notice the length 3136 is very long, in ViT it is 196, so...]
+	- swin transformer block (details later) -> 56x56x96, same dim
+- stage 2
+	- *patch merging* (mimic pooling) -> 28x28x192
+		- suppose input has dim HxWxC
+		- cut each patch to 4 patches with labeled positions
+		- merge each labeled position of all patches to one patch
+		- now we have 4 new patches (with global receptive field)
+		- each new patch has dim H/2xW/2xC
+		- now concatenate them by dim C -> H/2xW/2x4C
+		- pass through 1x1 conv to get H/2xW/2x2C (do this to match the usual process in ResNet that doubles the C dim)
+	- swin transformer block -> same dim
+- stage 3
+	- patch merging -> 14x14x384
+	- swin transformer block -> same dim
+- stage 4, same -> 7x7x768
+
+**Swin Transformer Block**
+
+- block 1
+	- layer norm
+	- self-attention on *non-overlapping patches*
+		- suppose stage 1, input window 56x56x96
+		- every window has MxM patches, here use M=7
+		- so input length of each patch is always 7x7=49
+		- there are 56/7x56/7=8x8=64 patches
+		- do self-attention on each patch
+		- complexity is lowered depending on size of M
+	- skip-connection
+	- layer norm
+	- MLP
+	- skip-connection
+- block 2
+	- layer norm
+	- shifted window partitioning: connection across windows
+		- for each MxM patches, shift them by M/2xM/2
+		- so we have 1 big patch in the middle, 4 long patches and 4 small patches, in total 9 patches
+		- sizes are MxM, 4 of MxM/2 (M/2xM), 4 of M/2xM/2 -> 4xMxM
+		- problem: since sizes are different, we cannot do self-attention in batches
+		- simple solution(?): pad to MxM for all, too expensive
+		- better: cyclic shift -> *masked MSA* -> reversed cyclic shift
+	- skip-connection
+	- layer norm
+	- MLP
+	- skip-connection
+- variants: Swin-T,S,B,L (different params)
