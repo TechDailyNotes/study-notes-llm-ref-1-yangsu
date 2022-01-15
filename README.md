@@ -2,7 +2,7 @@
 
 - [Machine Learning](machine_learning.md)
 - [Deep Learning](deep_learning.md)
-- [Natural Languag Processing](natural_language_processing.md)
+- [Natural Language Processing](natural_language_processing.md)
 - [Computer Vision](computer_vision.md)
 - [Basic Equations](basic_equations.py)
 - [Papers](papers.md)
