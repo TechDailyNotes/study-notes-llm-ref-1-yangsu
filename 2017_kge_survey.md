@@ -137,7 +137,7 @@
     - KG (MLP) + PRA (page ranking algorithm)
     - KG (RESCAL) + PRA
 
-# Applications in Downstream Tasks
+## Applications in Downstream Tasks
 
 ### In-KG Applications
 
