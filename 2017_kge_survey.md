@@ -1,4 +1,8 @@
-# KG embedding with facts alone
+## Source
+
+- [Knowledge Graph Embedding: A Survey of Approaches and Applications](https://persagen.com/files/misc/Wang2017Knowledge.pdf)
+
+## KG embedding with facts alone
 
 ### steps
 
@@ -69,7 +73,7 @@
 
 - for each (h,r,t), embedds (h,t) pair to vector p, then do pairwise ranking loss minimization on (p,r) -> so learn pairwise representation instead of individual entities
 
-# incorporating additional information
+## incorporating additional information
 
 ### entity types
 
@@ -172,5 +176,5 @@
     - previous approach uses *collaborative filtering techniques*, ignoring the effect of KG
     - *hybrid recommender systems* combine user-item interactions and info of user and item perform better
     - one: uses (user, r, item) facts -> KG embedding; textual -> *de-noising auto-encoders*;and visual -> *convolutional auto-encoders* knowledge of item to derive semantic representation of items
-        - score preference of user to item by u * (s + t + v + n), where u is user, s,t,v are structural, textual and visual representation of item, n is offset vector
-        - item recommendation can be made by score ranking of items
+    - score preference of user to item by u * (s + t + v + n), where u is user, s,t,v are structural, textual and visual representation of item, n is offset vector
+    - item recommendation can be made by score ranking of items
