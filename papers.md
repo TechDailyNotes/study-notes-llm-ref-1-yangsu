@@ -1,7 +1,7 @@
 ## 0 General
 
 - [2017 KG-Embedding Survey](2017_kge_survey.md)
-- [2021 KG-Embedding Survey](2021_kge_survey.md)
+- [DeepAR](DeepAR.md)
 
 ## 1 AlexNet
 
