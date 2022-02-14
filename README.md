@@ -8,6 +8,12 @@
 - [Papers](papers.md)
 - [Other Topics](others.md)
 
+# Self Reading
+
+- [2017 KG-Embedding Survey](2017_kge_survey.md)
+- [2019 GNN Survey](2019_GNN_survey.md)
+- [DeepAR](DeepAR.md)
+
 # Sources
 
 - [李宏毅 ML](https://www.bilibili.com/video/BV1Wv411h7kN)
