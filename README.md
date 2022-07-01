@@ -4,6 +4,7 @@
 - [Deep Learning](deep_learning.md)
 - [Natural Language Processing](natural_language_processing.md)
 - [Computer Vision](computer_vision.md)
+- [Graph Representation Learning](graph_representation_learning.md)
 - [Papers](papers.md)
 - [Other Topics](others.md)
 
