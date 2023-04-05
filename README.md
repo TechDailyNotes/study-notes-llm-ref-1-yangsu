@@ -23,6 +23,7 @@
 
 - [李宏毅 ML](https://www.bilibili.com/video/BV1Wv411h7kN)
 - [吴恩达 DL](https://www.bilibili.com/video/BV1FT4y1E74V)
+- https://github.com/km1994/NLP-Interview-Notes
 - 知乎
 - https://github.com/mli/paper-reading
 - https://plushunter.github.io/tech-stack/
