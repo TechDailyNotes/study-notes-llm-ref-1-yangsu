@@ -315,6 +315,17 @@
 
 ### ELMo
 
+- 引入：以前方法的局限性
+	- 多义词问题：one-hot、word2vec、fastText 为静态方式，即训练好后，每个词表达固定；
+	- 单向性：one-hot、word2vec、fastText 都是从左向右学习，不能同时考虑两边信息
+- 思想
+	- 预训练时，使用语言模型学习一个单词的emb（多义词无法解决）
+	- 使用时，单词间具有特定上下文，可根据上下文单词语义调整单词的emb表示（可解决多义词问题）
+	- 因为预训练过程中，emlo 中的 lstm 能够学习到每个词对应的上下文信息并保存在网络中，在 fine-turning 时，下游任务能够对该网络进行 fine-turning，使其 学习到新特征
+- 问题
+	- 在做序列编码任务时，使用 LSTM 不如 attention
+	- ELMo 采用双向拼接的融合特征，比Bert一体化融合特征方式弱
+
 ### BERT
 
 ### BERT Distilliation
@@ -322,6 +333,16 @@
 ### GPT-1, 2, 3
 
 ### COT (Chain of Thought)
+
+- tldr: few-shot learning by adding reasoning steps
+- additional token generated while doing the chain reasoning process is important for the final answer generation
+- this is also more interpretable to human
+- self-consistency improves CoT
+	- samples multiple outputs, majority vote
+- auto-CoT
+	- no need to label, just do "lets think step by step" and let the model generate the reasoing steps instead
+	- no need to verify the model's intermediate outputs correctness either
+	- shows the reasoning format is more important than reasoning correctness
 
 ### InstructGPT
 
