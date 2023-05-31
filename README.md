@@ -19,6 +19,10 @@
 - [2019 GNN Survey](2019_GNN_survey.md)
 - [DeepAR](DeepAR.md)
 
+## Fundamentals
+
+- [Fundamentals](fundamentals.md)
+
 ## Sources
 
 - [李宏毅 ML](https://www.bilibili.com/video/BV1Wv411h7kN)
