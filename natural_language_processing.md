@@ -1,6 +1,9 @@
 # NLP
 
-- source: [https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ](https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ)
+### Source
+
+- [https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ](https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ)
+- [https://github.com/km1994/nlp_paper_study](https://github.com/km1994/nlp_paper_study)
 
 ### Word Embedding
 
@@ -313,6 +316,37 @@
 		- 解决方向：train时加入错误讯息(Scheduled Sampling)
 		- 但有会伤害transformer平行化能力的问题(todo)
 
+**问题**
+
+- transformer 不能很好的处理超长输入问题，因为它固定了句子长度，如bert里是512
+	- 短于512：padding neg inf to right
+	- 长于512方法一：截断
+	- 长于512方法二：将文本划分为多个segments；训练的时候，对每个segment单独处理
+	- 但是，因为segments之间独立训练，所以不同的token之间，最长的依赖关系，就取决于segment的长度
+	- 出于效率的考虑，在划分segments的时候，不考虑句子的自然边界，而是根据固定的长度来划分序列，导致分割出来的segments在语义上是不完整的
+	- 在预测的时候，会对固定长度的 segment 做计算，一般取最后一个位置的隐向量作为输出，为了充分利用上下文关系，在每做完一次预测之后，就对整个序列向右移动一个位置，再做一次计算，这导致计算效率非常低 
+	- 长于512方法三：Segment-Level Recurrence (Transformer-XL 处理方式),在对当前segment进行处理的时候，缓存并利用上一个segment中所有layer的隐向量序列；上一个segment的所有隐向量序列只参与前向计算，不再进行反向传播
+- 方向信息以及相对位置的缺失问题 (todo)
+- 缺少Recurrent Inductive Bias (todo)
+- 非图灵完备(通俗的理解，就是无法解决所有的问题)
+- 缺少conditional computation
+	- transformer在encoder的过程中，所有输入元素都有相同的计算量，比如对于“I arrived at the bank after crossing the river", 和"river"相比，需要更多的背景知识来推断单词"bank"的含义，然而transformer在编码这个句子的时候，无条件对于每个单词应用相同的计算量，这样的过程显然是低效的
+- 时间和空间复杂度过大的问题
+	- 自注意力与长度n呈现出$O(n^2)$的时间和空间复杂度
+	- 解决：[Linformer](https://arxiv.org/abs/2006.04768)
+
+### Transformer ++
+
+**Longformer**
+
+**Transformer-XL**
+
+**Linformer**
+
+**Performer**
+
+**Efficient-Transformer**
+
 ### ELMo
 
 - 引入：以前方法的局限性
@@ -328,9 +362,56 @@
 
 ### BERT
 
+- 模型架构
+	- Transformer的双向编码器，旨在通过在左右上下文中共有的条件计算来预先训练来自无标号文本的深度双向表示
+- 输入
+	- Token embedding 字向量: 通过查询 WPE (word Piece Embedding) 字向量表将文本中的每个字转换为一维向量
+	- Segment embedding 文本向量: 表示句子对 A/B 的向量，用来帮助 next sentence prediction task，对分类/tagging任务，B=空集
+	- Position embedding 位置向量：由于出现在文本不同位置的字/词所携带的语义信息存在差异, 对不同位置的字/词分别附加一个不同的向量以作区分
+- 特别注意
+	- 最大长度：512，词汇表长度：3w
+	- CLS：输入的第一个token，也是输出时的第一个token，表示分类任务的hidden state
+	- SEP：区分句子对 A/B 的token
+- 预训练任务
+	- (MLM) Masked LM: 15% mask, 其中：80% [MASK], 10% random replace, 10% unchanged
+		- 为什么不是 100% [MASK]: 微调期间从未看到[MASK]词块, 更好匹配预训练和微调
+		- 为什么加 10% 概率不变: 将该表征偏向于实际观察到的单词
+		- 但从 appendix 的不同 % 组合看，最多差1个点，问题不大
+	- (NSP) Next Sentence Prediction, 其中：50% 真，50% 假
+		- 为什么做这个任务：问答(QA)和自然语言推理(NLI)下游任务都是基于对两个文本句子间关系的理解，这种关系并非通过语言建模直接获得
+		- 但roberta证明其实不需要？
+	- 损失函数：两个预训练分类任务的和
+- 与 Elmo 的区别
+	- ELMo模型是通过语言模型任务得到句子中单词的embedding表示，以此作为补充的新特征给下游任务使用；bert直接对不同任务fine-tune embedding
+- bert 的问题
+	- MLM 中 mask 的词如果不是条件独立的话，预训练的假设不成立，但emperically影响不大
+	- [MASK]在fine-tune中不会出现，导致预训练和微调不统一，但emperically也影响不大
+	- [MASK] subword 可能有的词只mask了一部分，导致预测是根据没mask的部分来的，而不是上下文关系，可以做改动让整个词都mask
+	- 收敛速度慢：每batch中只预测了15％的词块
+
 ### BERT Distilliation
 
-### GPT-1, 2, 3
+**TinyBERT**
+
+**DistilBERT**
+
+**AlBERT**
+
+**FastBERT**
+
+### BERT ++
+
+**RoBERTa**
+
+**SBERT**
+
+**ColBERT**
+
+**XLNet**
+
+**Bart**
+
+**ELECTRA**
 
 ### COT (Chain of Thought)
 
@@ -380,6 +461,51 @@
 	- future: how to eval is important, training objective, etc.
 	- current main objective: helpfulness, side objective: truthfullness, harmfulness
 
+### LLMs
+
+**T5**
+
+**Flan-T5**
+
+**Chinchilla**
+
+**Todo**
+
+- 2020
+	- GPT-3
+	- mT5
+	- GShard
+- 2021
+	- PanGu
+	- PLUG
+	- Ernie
+	- T0
+	- Authropic
+	- Gopher
+	- GLaM
+	- WebGPT
+- 2022
+	- LaMDA
+	- MT-NLG
+	- PaLM
+	- UL2
+	- OPT
+	- GPT-NeoX
+	- GLM
+	- AlexaTM
+	- BLOOM
+	- Galatica
+	- Sparrow
+	- NLLB
+	- ChatGPT
+- 2023
+	- Vicuna
+	- Bard
+	- LLaMA
+	- Alpaca
+	- Claude
+	- Falcon
+
 ### GPT-4
 
 - engineering
@@ -398,7 +524,8 @@
 	- low coding correctness (data contamination?) -> some claim that correct prompting fix most of it
 	- bias, risk issue: human experts, safety reward signal by RLHF
 - paradigm shift
-	- generating high-level content, lack plans, coherence
-	- context length limitation - no memory
+	- lack of planning, long-term memory, backtrack (autoregressive?) -> LLM as agent?
 	- simple reasoning, logical, inconsistency errors
-	- user persuasion still leads to factual errors (caz of RLHF?)
+	- confidence calibration - user persuasion still leads to factual errors (caz of RLHF?)
+	- continual learning: update itself during changing environment
+	- personalization
