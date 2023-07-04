@@ -22,6 +22,7 @@
 ## Fundamentals
 
 - [Fundamentals](fundamentals.md)
+- [Quant](quant.md)
 
 ## Sources
 
