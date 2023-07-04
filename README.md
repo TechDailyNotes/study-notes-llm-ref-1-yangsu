@@ -21,7 +21,7 @@
 
 ## Fundamentals
 
-- [Fundamentals](fundamentals.md)
+- [OOP](fundamentals.md)
 - [Quant](quant.md)
 
 ## Sources
