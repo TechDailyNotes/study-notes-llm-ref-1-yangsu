@@ -2,10 +2,10 @@
 
 ### Source
 
-- [https://zhuanlan.zhihu.com/p/643560888]
-- [https://paddlepedia.readthedocs.io/en/latest/index.html]
-- [https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ](https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ)
-- [https://github.com/km1994/nlp_paper_study](https://github.com/km1994/nlp_paper_study)
+- [知乎](https://zhuanlan.zhihu.com/p/643560888)
+- [PaddlePaddle](https://paddlepedia.readthedocs.io/en/latest/index.html)
+- [NLP Course YouTube](https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ)
+- [NLP GitHub Repo](https://github.com/km1994/nlp_paper_study)
 
 ### Word Embedding
 
