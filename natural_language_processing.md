@@ -601,7 +601,14 @@
 	- 初始的词汇表可以采用所有预分词器分出来的词，再加上所有高频的子串。
 每次从词汇表中删除词汇的原则是使预定义的损失最小
 
-**Normalization**
+**Architecture**
+
+- Causal Decoder (Anything else)
+- Prefix Decoder (GLM)
+- MoE (Switch Transformer)
+- SSM (S4)
+
+**Layer Norm**
 
 - https://zhuanlan.zhihu.com/p/643829565#ref_7 (todo)
 - https://zhuanlan.zhihu.com/p/86765356 (todo)
@@ -610,6 +617,7 @@
 	- 对LayerNorm的一个改进，没有做re-center操作（移除了其中的均值项），可以看作LayerNorm在均值为0时的一个特例
 - post DeepNorm (GLM)
 - pre LayerNorm (GPT3, PanGU, OPT, PaLM, BLOOM, Galactica)
+- Sandwich-LN
 
 **Activation**
 
@@ -619,16 +627,25 @@
 - SwiGLU
 - GeGLU
 
-**Position Embedding**
+**Position Encoding**
 
 - Absolute: xi = xi + pi
 - Relative: Aij = Wq xi xj.T Wk.T + r_{i-j}
-- RoPE: Aij = Wq xi R_{theta, i-j} xj.T Wk.T
-- Alibi
+- T5 bias
+- ALiBi
+- RoPE
+- xPos
 - position encoding/embedding 区别
 	- encoding固定式，embedding学习式
 	- embedding，存一个hidden_dim x seq_len 的可学习矩阵，问题：不能随着seq_len的增加而改变
 	- encoding，周期函数，为什么可以用周期函数？注意，不会走完一个周期，同时使用sin和cos三角函数时，第k个位置的encoding可以被第0个位置的encoding线性表示
+
+**Attention**
+
+- Multi-Head Attention (MHA)
+- Multi-Query Attention (MQA)
+- FlashAttention
+- PageAttention
 
 **Complexity Analysis**
 
@@ -638,6 +655,21 @@
 - 那么对于 N billion 的模型
 	- 推理时显存的下限是 2n GB ，至少要把模型加载完全
 	- 训练时，如果用Adam优化器，有个2+2+12的公式，训练时显存下限是16n GB，需要把模型参数、梯度和优化器状态（4+4+4），保持在显存，具体可以参考微软的ZeRO论文
+
+**Adaptation Tuning**
+
+- Instruction Tuning
+- Alignment Tuning
+- Parameter-Efficient Model Adaptation
+- memory-Efficient Model Adaptation
+
+**Utilization**
+
+- In-Context Learning (ICL)
+- Chain-of-Thought Reasoning (CoT)
+- Planning for Complex Task Solving
+
+**Evaluation**
 
 ### LLM ++
 
