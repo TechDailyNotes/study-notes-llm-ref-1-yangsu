@@ -18,6 +18,7 @@
 - [2017 KG-Embedding Survey](2017_kge_survey.md)
 - [2019 GNN Survey](2019_GNN_survey.md)
 - [DeepAR](DeepAR.md)
+- [2023 LLM Survey](2023_LLM_survey.md)
 
 ## Fundamentals
 
