@@ -50,7 +50,7 @@
 	- usability of LLMs for various downstream tasks
 	- evaluation of LLMs
 
-# Overview
+### Overview
 
 - what are LLMs
 	- usually larger than 10 B
@@ -69,7 +69,7 @@
 	- alignment tuning: helpful, honest and harmless rather than toxic, biased, harmful content from low-quality data, e.g. InstructGPT with RLHF (*reinforcement learning with human feedback*) - human in the loop with elborately designed labeling strategies
 	- tools manipulation: LLMs perform less well on tasks that are not best formed or expressed in the text (i.e. numerical computation), and they are limited to non up-to-date data - solve: employ external tools, e.g. ChatGPT Plugins
 
-# Resources of LLMs
+### Resources of LLMs
 
 - 10B ~ 100B open sourced LLMs
 	- mT5, T0, GPT-NeoX-20B, CodeGen, UL2, Flan-T5, mT0, PanGu-a
@@ -119,7 +119,7 @@
 	- *BMTrain*: efficient library by OpenBMB
 	- *FastMoE*: specialized library for MoE models, enables data and model parallelism
 
-# Pre-Training
+### Pre-Training
 
 **Data Collection**
 
@@ -278,19 +278,19 @@
 	- *predictable scaling* is useful to predict model performance ahead of time, introduced by GPT-4
 	- quantization techniques are important to increase inference speed: reduce both time and space cost with some loss in performance - INT8 is popular, INT4 is used by some aggressive models
 
-# Adaptation Tuning
+### Adaptation Tuning
 
 **Instruction Tuning**
 
 **Alignment Tuning**
 
-# Utilization
+### Utilization
 
 **In-Context Learning**
 
 **Chain-of-Thought Prompting**
 
-# Evaluation
+### Evaluation
 
 **Task Evaluation**
 
@@ -298,4 +298,4 @@
 
 **Benchmarks**
 
-# Conclusion and Future Directions
+### Conclusion and Future Directions
