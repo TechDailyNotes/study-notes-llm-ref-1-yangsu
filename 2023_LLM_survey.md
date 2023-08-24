@@ -280,22 +280,181 @@
 
 ### Adaptation Tuning
 
+- instruction tuning: enhance LLM abilities, alignment tuning: align behavior of LLM with human value or preferences
+
 **Instruction Tuning**
+
+- tasks: xP3 (81M), OIG (43M), MVPCorpus (41M), etc.
+- main usage: fine-tune LLMs on a collection of formatted instances in natural language
+- formatted instance construction
+	- a formatted instance = a task description (*instruction*) + input-output pair + (optional) small number of demonstrations
+	- instruction is crucial in LLM task generalization ability, fine-tune without it gives very bad performance
+	- *PromptSource*: crowd-sourcing task description sharing platform
+	- formatting existing dataset: general proposed instruction, or specially designed instruction
+	- formatting human needs: to solve lack of instruction diversity or mismatched human needed instruction, InstructGPT took people's queries as task descriptions, human labelers are indentedly asked to write real-life tasks in various formats, then another group of labelers answer them as output
+	- key factors for instance construction
+		- scaling the instructions (number of tasks): also increase task diversity in length, structure, creativity; also increase number of instances per task (but not too much like 1mil, would overfit)
+		- formatting design: good task description and demonstration are crucial, also alleviate model sensitivity to instruction engineering, but putting [things to avoid, reasons, suggestions, etc.] would have few or even bad effect to model performance; to do step-by-step reasoning, fine-tune with CoT + non-CoT leads to very good reasoning performance and other tasks like analysis and QAs
+	- TLDR
+		- more diversity of instructions > more instances
+		- human-need tasks from labelers is important
+		- but since human-need instances lack guidelines, it may feel heuristic
+		- can reuse formatted dataset or auto-constructed instructions using existing LLMs to reduce human efforts
+- instruction tuning strategies
+	- different from supervised pre-training in: 1) training objective (seq2seq loss), 2) optimization config (smaller batch size and lr), 3) special attention in practice, also:
+	- balancing data distribution: balance each task is important
+		- *examples-proportional mixing* strategy: combine all datasets then sample each instance equally, but increase sampling ratio for high-quality collections (FLAN, P3)
+		- *maximum cap* (i.e. 10-100k): control max number of examples a dataset can contain in instruction tuning - prevent larger datasett from overwhelming the entire distribution
+	- combining instruction tuning and pre-training
+		- *OPT-IML* addes pre-training data in instruction tuning - like regularization for tuning
+		- *GLM-130B*, *Galactica* train from scratch with mixed these two datasets - multi-task learning
+- effect of instruction tuning
+	- performance improvement
+		- models from 77M to 540B all benefit from instruction tuning, but better improvement as model is bigger
+		- instruction-tuned small models even better than large models un-tuned
+		- different model architectures, pre-training objectives, model adaptation methods all benefit from it too
+		- more efficient than pre-training as instruction tuning data size is much smaller than pre-training ones
+	- task generalization
+		- or *emergent ability*, model begins to follow human instructions on unseen tasks without demonstrations
+		- instruction tuning also alleviate model weakness on repetitive generation, complementing the input but not accomplishing the task
+		- *BLOOMZ-P3* instruction tuned on BLOOM shows that it also generalizes to tasks across languages
+		- and using English-only instructions can produce good results on multilingual tasks - helps instruction dataset preparation and engineering efforts
 
 **Alignment Tuning**
 
+- background
+	- unintended behaviors: fabricating false info, inaccurate objectives
+	- and harmful, misleading, biased experssions
+	- NTP (next token prediction) or instruction tuning lacks these
+	- need alignment to human preference
+	- alignment come with performance drop: *alignment tax*
+- alignment criteria repsentatives
+	- helpfulness
+		- LLM should show a clear attempt to assit users in concise and efficient manner
+		- LLM should show additional info through pertinent inquiries, suitable level of sensitivity, perceptiveness, and prudence
+		- hard to define and measure the intention of users
+	- honesty
+		- LLM should show accurate content, not faking info
+		- LLM should show appropriate level of uncertainty to avoid misrepresentation of info, i.e. LLM should *know unknowns*
+		- honesty is more objective and could be further developed
+	- harmlessness
+		- LLM should not be offensive or discriminatory
+		- LLM should detect malicious purposed requests, i.e. politely refuse when asked dangerous actions
+		- *what behaviors* are harmful and *what extent* varies from user groups
+	- summary
+		- these criteria are subjective, hard to optimize
+		- *red teaming* use manual or automated means to probe LLMs adversarially to generate harmful outputs and update LLMs to prevent them
+- collect human feedback
+	- human labeler selection
+		- they need to have qualified level of education and excellent proficiency in English
+		- still has mismatch to researchers' intention
+		- InstructGPT conducts a screening between researchers and labelers, and filter labelers based on most agreements to researchers on a small amount of data - best among them are *super raters* that label later stage of LLMs as well
+		- during annotation, detailed instructions and instant guidance to labelers can further regulate the result
+	- human feedback collection
+		- ranking-based collection: different labelers have different preferenes -> *ELO Rating* gives a preference ranking
+		- question-based collection: labelers can provide detailed feedback while answering certain questions -> WebGPT labelers answer questions about whether retrieved documents are useful for answering the given input
+		- rule-based collection: Sparrow uses a series of rules to test whether model responses meet the alignment criteria (helpful, harmless, etc.), then we get two types of feedback
+			- response preference feedback by comparing model output in pairs
+			- rule violation feedback by collecting labeler assessment score of whether model output violates the alignment criteria
+			- GPT-4 uses a set of zero-shot (self-generated) classifiers to auto-determine if model output violate a set of human-written rules
+- RLHF (Reinforcemnet Learning from Human Feedback)
+	- background: RL PPO (Proximal Policy Optimization) algorithm
+	- RLHF system
+		- pre-trained LM: the LLM we have pre-trained (175B GPT-3 for InstructGPT, 280B Gopher for GopherCite)
+		- reward model: a fine-tuned LM or LM trained with human preference data (usually small, gives scalar output, 6B GPT-3 / 7B Gopher)
+		- optimize pre-trained LM with RL alignment
+	- key steps in RLHF
+		- supervised fine-tuning
+			- pre-trained LM are provided a collection of input prompts (instruction) and desired output for its fine-tuning
+			- ensure the diversity of task while providing specific tasks
+		- reward model training
+			- use the fine-tuned LM to generate a certain number of output using sampled prompts from either supervised data or human prompt
+			- let human labelers to annotate perference for these outputs by ranking - which reduce incosistency -> then we train reward model to predict this ranking
+		- RL fine-tuning
+			- the fine-tuned LM acts as the *policy* in RL that takes input as a prompt and return output text
+			- the *action space* of the policy is all vocab of the LM
+			- the *state* is characterized by the currently generated token sequence
+			- the *reward* is generated by the RM
+		- RL PPO
+			- to avoid deviating too much from the initial (before tuned) LM, a penalty term is incorported into the reward function
+			- InstructGPT optimizes the LM against RM with PPO algorithm
+			- for each input prpmpt, calculate the KL divergence of the output from the current (supervised fine-tuned + RL fine-tuned) model to the initial (un-tuned) LM as the penalty
+		- reward model and RL fine-tune can be iterated multiple turns for better alignment
+
 ### Utilization
 
-**In-Context Learning**
-
-**Chain-of-Thought Prompting**
+- prompt formulation
+- demonstration design
+	- demonstration selection
+		- heruistic approaches
+		- LLM-based approaches
+	- demonstration format
+	- demonstration order
+- underlying mechanism
+	- how pre-training affects ICL
+	- how LLMs perform ICL
+- in-context learning with CoT
+	- few-shot CoT
+		- CoT prompt design
+		- enhanced CoT strategies
+	- zero-shot CoT
+- further discussion on CoT
+	- when CoT works for LLMs
+	- why LLMs can perform CoT reasoning
+		- the source of CoT ability
+		- the effect of prompting components
 
 ### Evaluation
 
 **Task Evaluation**
 
+- language generation
+	- language modeling
+	- conditional text generation
+	- code synthesis
+	- major issues
+		- controllable generation
+		- specialized generation
+- knowledge utilization
+	- closed-book QA
+	- open-book QA
+	- knowledge completion
+	- major issues
+		- hallucination
+		- knowledge recency
+- complex reasoning
+	- knowledge reasoning
+	- symbolic reasoning
+	- mathematical reasoning
+	- major issues
+		- inconsistency
+		- numerical computation
+
 **Advanced Ability Evaluation**
+
+- human alignment
+- interaction with external environment
+- tool manipulation
 
 **Benchmarks**
 
+- evaluation benchmarks
+	- MMLU
+	- BIG-bench
+	- HELM
+- general analysis on LLM
+	- mastery
+	- robustness
+- specialized analysis on LLM
+	- healthcare
+	- education
+	- law
+
 ### Conclusion and Future Directions
+
+- theory and principle
+- model architecture
+- model training
+- model utilization
+- safety and alignment
+- application and ecosystem
