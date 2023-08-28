@@ -37,11 +37,13 @@
 	- `"%s" % name` -> `"{}".format` -> `f"{}"`
 - 迭代器 list-like，生成器 generator
 	- https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
-	- generate use constant space, `yield`
+	- generator use constant space, `yield`
+	- access next item by `next(generator)`
+	- `iter(list)` change to generator
 - 缺省参数 `*args, **kwargs`
 	- https://stackoverflow.com/questions/3394835/use-of-args-and-kwargs
-	- `*args` 任意数量 no-named 传参
-	- `**kwargs` 任意数量 named 传参
+	- `*args` 任意数量 non-named 传参
+	- `**kwargs` 任意数量 named (kw: keyword) 传参
 - 面向切面编程 AOP，装饰器 decorator
 	- https://stackoverflow.com/questions/739654/how-do-i-make-function-decorators-and-chain-them-together
 	- 目的是为已经存在的对象添加额外的功能
@@ -70,8 +72,10 @@
 	- 方法2：通过 `__new__(cls)` 把 `__dict__()` 共享属性
 	- 方法3：类装饰器
 	- 方法4：import 类的对象
-- 作用域
+- 作用域 scope resolution
 	- local -> enclosing locals -> global -> builtin
+	- differ same name by namespace
+	- can override by `global` keyword
 - 线程全局锁 GIL (Global Interpreter Lock) - 相当困难 TODO
 	- 对于 io 密集型任务，python 的多线程起到作用
 	- 对于 cpu 密集型任务，python 的多线程可能会因为争夺资源而变慢
@@ -91,6 +95,7 @@
 	- https://coolshell.cn/articles/10822.html
 	- 匿名函数，简洁性高
 - 垃圾回收 GC (garbage collection)
+	- private heap space: all objects are stored here
 	- 引用计数 (reference counting): `ob_refcnt` 简单实时，但维护计数消耗资源，且有循环引用问题
 	- 标记-清除 (mark-sweep): 按需分配，当内存不够时清扫空间
 	- 分代回收 (generation collection): 根据内存块存活时间划分三代集合，越多代，GC 频率越低
@@ -101,20 +106,372 @@
 - `super().__init__()`
 	- https://stackoverflow.com/questions/576169/understanding-python-super-with-init-methods
 	- 作用于多继承 multiple inheritance
+- python interpretation
+	- python is not interpreted/compiled
+	- `.pyc`: intermediate set of bytecode instructions generated from `.py` file when we import them
+	- CPython or JIT (Just in Time compiler) interpret `.pyc` file by following its instructions
 - 其他 etc.
 	- `reference` vs `copy.copy()` vs `copy.deepcopy()`
 	- python list 底层：https://www.jianshu.com/p/J4U6rR
 	- `is` by reference, `==` by value
 	- python2 vs python3: http://chenqx.github.io/2014/11/10/Key-differences-between-Python-2-7-x-and-Python-3-x/
 	- range vs xrange: https://stackoverflow.com/questions/94935/what-is-the-difference-between-range-and-xrange-functions-in-python-2-x
+	- pickling, unpickling: serialization TODO
+	- delete file: `os.remove(filename)`
+	- `issubclass(Child, Parent), isinstance(obj, Child)`
 
 ### C++
 
+- sources
+	- https://interview.huihut.com/
+- `const` 修饰其后面的值不可改变
+	- `const int a` 修饰变量，说明该变量不能被改变
+	- `A::int get() const` 修饰类的函数，可以和普通函数取一个名字，但区分与普通函数，不能修改任何类成员的值
+	- `const A a` 修饰类的实例，只能调用类的const函数和变量
+	- `const A *p = &a` 指向常对象的指针，指针可以指向别的东西
+	- `const A &q = a` 指向常对象的引用，用于形参类型，避免了copy，也避免了函数对值的更改
+	- `const char* p2 = "Hello"` 指向常量的指针
+	- `char* const p3 = "Hello"` 自身是常量的指针，指针不能指向别的东西
+	- `const char* const p4 = "Hello"` 自身和指向的都不能改变
+	- 没有 const reference，因为引用只是对象的别名，引用不是对象，不能用 const 修饰
+	- 函数里的 const
+		- `void foo1(const int Var)` 传参是常量
+		- `void foo2(const char* Var)` 指针指向的内容是常量
+		- `void foo3(char* const Var)` 指针自身是常量
+		- `void foo4(const int& Var)` 引用的参数是常量
+		- `const int foo5()` 返回一个常量
+		- `const int* foo6()` 返回一个指向常量的指针
+		- `int* const foo7()` 返回一个自身为常量的指针
+- `#define` vs. `const`
+	- 宏定义相当于字符转换，由预处理器处理，没有类型安全检查，不分配内存，存储在代码段，可以通过 `#undef` 取消
+	- 常数声明由编译器处理，有类型安全检查，要分配内存，存储在数据段，不能取消
+- `static`
+	- 修饰普通变量时，修改了变量的存储区域和生命周期，使得变量存在静态区，在 main 函数运行之前就分配了空间，如果有初始值就用初始值初始化它，没有系统就用默认值初始化它
+	- 修饰普通函数时，表明函数的作用范围，*仅在定义该函数的文件内才能使用*，在多人开发时，为了防止与他人命名空间里的函数重名，可以把函数定位为 static
+	- 修饰成员变量时，使得修饰的成员在所有对象里只保存一个该变量，而且不需要生成对象实例就可以访问这个成员（相当于类的变量）
+	- 修饰成员函数，同理，不需要实例就可以访问，但 static 函数里不能访问非 static 的成员变量
+- `this` 指针
+	- this 是隐含在每一个非静态成员函数里的特殊指针，指向调用该成员函数的那个对象
+	- 当对一个对象调用成员函数时，编译程序先将对象的地址赋给 this 指针，然后调用成员函数，每次成员函数存或取数据成员时，都隐式地使用 this 指针
+	- 当一个成员函数被调用时，自动向他传递一个隐含的 this 参数
+	- this 指针被隐含地声明为 `ClassName *const this`，所以不能为 this 赋值；在 const 成员函数里， this 的类型是 `const ClassName* const`，说明不能对 this 指向的对象进行修改
+	- this 是一个*右值*，所以不能取它的地址 (不能 &this)
+	- 在以下场景中，经常需要显式地引用 this
+		- 为实现对象的链式引用
+		- 为避免对同一对象进行赋值操作
+		- 在实现一些数据结构如 list 时
+- `inline` 内联函数
+	- 相当于把内联函数里面的内容写在调用内联函数处
+	- 相当于不用执行进入函数的步骤，直接执行函数体
+	- 相当于宏，但多了类型检查，真正具有函数特性
+	- 编译器一般不内联包含循环、递归、switch等复杂操作的内联函数
+	- 在类声明中定义的函数，除了虚函数的其他函数都会自动隐式地当成内联函数
+	- 在类外定义的函数需要显式内联：`inline int A::foo()`
+	- 编译器对 inline 函数的处理步骤
+		- 将 inline 函数体复制到 inline 函数调用点处
+		- 为所用 inline 函数中的局部变量分配内存空间
+		- 将 inline 函数的输入参数和返回值映射到调用方法的局部变量空间中
+		- 如果 inline 函数有多个返回点，将其转变为 inline 函数代码块末尾的分支 （使用 goto）
+	- 优点
+		- 和宏函数一样将在被调用处进行代码展开，省去了参数压栈、栈帧开辟与回收，结果返回等，就提高了程序运行速度
+		- 相比宏函数，在代码展开时会做安全检查和自动类型转换，宏定义则不能
+		- 在类中声明同时定义的成员函数，自动转化为内联函数，因此内联函数可以访问类的成员变量，宏定义则不能
+		- 在运行时可以调试，宏定义则不能
+	- 缺点
+		- 代码膨胀，内联以代码膨胀（复制）为代价消除函数调用带来的开销，如果执行函数体内代码的时间比函数调用的开销大，那么效率的收获会很少；另一方面，每处内联函数调用都要复制代码，使得程序的总代码量变大，消耗更多的内存空间
+		- inline 函数无法随着函数库升级而升级，inline 函数的改变需要重新编译，不想 non-inline 可以直接链接
+		- 是否 inline 程序员无法控制，inline只是对编译器的建议，是否内联的决定权在编译器
+	- 虚函数 (virtual) 可以是内联函数吗
+		- 内联可以修饰虚函数，但是当虚函数表现多态性的时候不能内联
+		- 内联是在编译期建议编译器内联，而虚函数的多态性在运行期，编译器无法知道运行期调用哪个代码，因此虚函数表现为多态性时（运行期）不可以内联
+		- `inline virtual` 唯一可以内联的时候是：编译器知道所调用的对象是哪个类（如 Base::who()），这只有在编译器具有实际对象而不是对象的指针或引用时才会发生
+- `volatile` 变量
+	- 是一种类型修饰符，用它声明的类型变量表示可以被某些编译器位置的因素（OS、硬件、其他线程等）更改，所以使用 volatile 告诉编译器不对这种对象进行优化
+	- volatile 声明的变量，每次访问都必须从内存里取出值（没有被 volatile 修饰的变量可能由于编译器的优化，从 CPU 寄存器里取值）
+	- const 可以是 volatile （如只读的状态寄存器）
+	- 指针可以是 volatile
+- `assert()` 断言
+	- 是宏，不是函数，assert 宏的定义在 `<assert.h> (C), <cassert> (C++)` 里，作用是如果它的条件返回错误，则终止程序运行
+	- 可以通过定义 `NDEBUG` 来关闭 assert，但需要在源代码的开头，`#include <assert.h>` 之前
+- `sizeof()`
+	- sizeof 对数组，得到整个数组所占空间的大小
+	- sizeof 对指针，得到指针本身所占空间的大小
+- `#pragma pack(n)`
+	- 指设定结构体、联合和类成员变量以 n 字节的方式对齐
+	- 通过 `#pragma pack(push), #prag pack(4)` 保存对齐状态， `some struct {};`, `#pragma pack(pop)` 恢复对齐状态
+- bit-field 位域
+	- `Bit mode: 2;` mode 占 2 位，类可以将其非静态数据成员定义为位域，在一个位域中含有一定数量的二进制位，当一个程序需要向其他程序或硬件设备传递二进制数据时，通常会用到位域
+		- 位域在内存中的布局是与机器有关的
+		- 位域的类型必须是整形或枚举类型，带符号类型中的位域的行为将因具体实现而定
+		- 取地址运算符（&）不能作用于位域，任何指针都无法指向类的位域
+- `extern "C"`
+	- 被 extern 限定的函数或变量是 extern 类型的
+	- 被 extern "C" 修饰的变量和函数是按照 C 语言方式编译和链接的，作用是让 C++ 编译器将 extern "C" 声明的代码当作 C 语言代码处理，可以避免 C++ 因符号修饰导致代码不能和 C 语言库中的符号进行链接的问题
+- `typedef struct`
+	- 在 C 语言里可以 alias name to a datatype：`typedef struct Student S`
+	- 另外还可以定义与 struct Student 不冲突的 `void Student() {}`
+	- 在 C++ 中，由于编译器定位符号的规则（搜索规则）改变，导致不同于 C 语言
+		- 如果在类标识符空间定义了 struct Student {...};，使用 Student me; 时，编译器将搜索全局标识符表，Student 未找到，则在类标识符内搜索，即表现为可以使用 Student 也可以使用 struct Student
+		- 若定义了与 Student 同名函数之后，则 Student 只代表函数，不代表结构体
+- `struct` and `class` in C++
+	- 总的来说，struct 更适合看成是一个数据结构的实现体，class 更适合看成是一个对象的实现体
+	- 最本质的一个区别就是默认的访问控制
+		- 默认的继承访问权限: struct 是 public 的，class 是 private 的
+		- struct 作为数据结构的实现体，它默认的数据访问控制是 public 的，而 class 作为对象的实现体，它默认的成员变量访问控制是 private 的
+- [new] `union` 联合
+	- 是一种节省空间的特殊的类，一个 union 可以有多个数据成员，但是在任意时刻只有一个数据成员可以有值，当某个成员被赋值后，其他成员变为未定义状态
+	- 特点
+		- 默认访问控制符为 public
+		- 可以含有构造和析构函数
+		- 不能含有引用类型的成员
+		- 不能继承自其他类，不能作为基类
+		- 不能含有虚函数
+		- 匿名 union 在定义所在作用域可直接访问 union 成员
+		- 匿名 union 不能包含 protected 或 private 成员
+		- 全局匿名 union 必须是 static 的
+- C 实现 C++ 类
+	- C 实现 C++ 的面向对象特性（封装、继承、多态）
+	- 封装：使用函数指针把属性与方法封装到结构体中
+	- 继承：结构体嵌套
+	- 多态：父类与子类方法的函数指针不同
+	- https://stackoverflow.com/a/351745
+- `explicit` 显式关键字
+	- explicit 修饰构造函数时，可以防止隐式转换和复制初始化
+	- explicit 修饰转换函数时，可以防止隐式转换，但[按语境转换](https://zh.cppreference.com/w/cpp/language/implicit_conversion)除外
+- `friend` 友元类，友元函数
+	- 能访问私有成员
+	- 破坏了封装性
+	- 友元关系不可传递，具有单向性，其形式和数量没有限制
+- `using` 声明，`using` 指示
+	- 一条 using 声明 语句一次只引入命名空间的一个成员，它使得我们可以清楚知道程序中所引用的到底是哪个名字： `using namespace_name::name;`
+	- 构造函数的 using 声明
+		- 在 C++11 中，派生类能够重用其直接基类定义的构造函数: `class Derived: Base { using Base::Base;};`
+		- 如上 using 声明，对于基类的每个构造函数，编译器都生成一个与之对应（形参列表完全相同）的派生类构造函数
+		- 生成如下类型构造函数 `Derived(params): Base (args) {}`
+	- using 指示
+		- 使得某个特定命名空间中所有名字都可见，这样我们就无需再为它们添加任何前缀限定符了：`using namespace_name name;`
+		- 尽量少使用 using 指示 污染命名空间: 一般说来，使用 using 命令比使用 using 编译命令更安全，这是由于它只导入了指定的名称。如果该名称与局部名称发生冲突，编译器将发出指示。using编译命令导入所有的名称，包括可能并不需要的名称。如果与局部名称发生冲突，则局部名称将覆盖名称空间版本，而编译器并不会发出警告。另外，名称空间的开放性意味着名称空间的名称可能分散在多个地方，这使得难以准确知道添加了哪些名称
+		- i.e. 多用 `using std::cin;` 而不是 `using namespace std;`
+- `::` 范围解析运算符
+	- 全局作用域符 (::name): 用于类型名称（类、类成员、成员函数、变量等）前，表示作用域为全局命名空间
+	- 类作用域符 (class::name): 用于表示指定类型的作用域范围是具体某个类的
+	- 命名空间作用域符 (namespace::name): 用于表示指定类型的作用域范围是具体某个命名空间的
+- `enum` 枚举类型
+	- 限定作用域的枚举：`enum class open_modes {input, output, append};`
+	- 不限定作用域的枚举：`enum color {red, yellow};`, `enum {floatPrec = 6, doublePrec = 10};`
+- `decltype (entity/expression)`
+	- 用于检查实体的声明类型或表达式的类型及值分类
+- 引用
+	- 左值引用：可以取地址的，有名字的，非临时的是左值
+		- i.e. 非匿名对象（包括变量），函数返回的引用，const 对象
+		- 要求右边的值可以取地址，或者用常引用，但使用常引用后，我们只能通过引用来读取数据，无法去修改数据，因为其被const修饰成常量引用了
+		- 即不能 `int &var = 10;`，但可以引用常量 `const int &var = 10;`，后者相当于 `const int tmp = 10; const int &var = tmp;`
+	- 右值引用(C++ 11)：不能取地址的，没有名字的，临时的是右值
+		- i.e. 立即数，函数返回的值
+		- 从本质上理解，创建和销毁由编译器幕后控制，程序员只能确保在本行代码有效的，就是右值；而用户创建的，通过作用域规则可知其生存期的，就是左值
+		- 右值引用用来绑定到右值，绑定到右值以后本来会被销毁的右值的生存期会延长至与绑定到它的右值引用的生存期: `int &&var = 10;`
+		- 在汇编层面右值引用做的事情和常引用是相同的，即产生临时量来存储常量。但是，唯一 一点的区别是，右值引用可以进行读写操作，而常引用只能进行读操作
+		- 右值引用的存在并不是为了取代左值引用，而是充分利用右值(特别是临时对象)的构造来减少对象构造和析构操作以提高效率
+		- 具体地，可以使用右值引用把在函数返回时叫拷贝构造函数重新开辟内存空间，和赋值重载函数时重新开辟内存空间的操作节省：又叫*移动构造函数*和*移动赋值函数*，这里的移动指的是把临时量的资源移动给了当前对象，临时对象就不持有资源，为nullptr了，实际上没有进行任何的数据移动，没发生任何的内存开辟和数据拷贝
+	- 引用折叠
+		- `X& &`, `X& &&`, `X&& &` 可折叠成 `X&`
+		- `X&& &&` 可折叠成 `X&&`
+	- https://zhuanlan.zhihu.com/p/97128024
+- 宏
+	- 宏定义可以实现类似于函数的功能，但是它终归不是函数，而宏定义中括弧中的“参数”也不是真的参数，在宏展开的时候对 “参数” 进行的是一对一的替换
+- 成员初始化列表
+	- 即 `A(): var1(0), var2(0), {}` instead of `A() {var1=0; var2=0;}`
+	- 好处：更高效，少了一次调用默认构造函数的过程
+	- 有些场合必须要用初始化列表
+		- 常量成员，因为常量只能初始化不能赋值，所以必须放在初始化列表里面
+		- 引用类型，引用必须在定义的时候初始化，并且不能重新赋值，所以也要写在初始化列表里面
+		- 没有默认构造函数的类类型，因为使用初始化列表可以不必调用默认构造函数来初始化
+- [new] `initializer_list` 列表初始化
+	- todo
+- OOP 面向对象
+	- 封装
+		- 把客观事物封装成抽象的类，并且类可以把自己的数据和方法只让可信的类或者对象操作，对不可信的进行信息隐藏，默认 private
+		- public 成员：可以被任意实体访问
+		- protected 成员：只允许被子类及本类的成员函数访问
+		- private 成员：只允许被本类的成员函数、友元类或友元函数访问
+	- 继承
+		- 基类（父类）——> 派生类（子类）
+	- 多态 Polymorphisms，是以封装和继承为基础的
+		- 重载/静态多态 (ad-hoc polymorphism, 编译期)：函数重载、运算符重载 (overloading)
+		- 子类型多态 (subtype polymorphism, 运行期)：虚函数，重写 (overriding)
+		- 参数多态 (parametric polymorphism, 编译期)：类模板、函数模板，如 `template <class T>`, `T max(T a, T b) { return a > b ? a : b;}`，但不能作用在指针类型上，因为需要比较地址而不是值，对于指针类型需要用重载而不是模板
+		- 强制多态 (coercion polymorphism, 编译期/运行期)：基本类型转换、自定义类型转换 (implicit/explicit casting)
+	- https://catonmat.net/cpp-polymorphism
+	- 静态多态（编译器/早绑定）
+		- 函数重载 `void A::foo(int a)`, `void A::foo(int a, int b)`
+	- 动态多态（运行期/晚绑定）
+		- 虚函数：用 virtual 修饰成员函数，使其成为虚函数
+		- 动态绑定：当使用基类的引用或指针调用一个虚函数时将发生动态绑定
+		- 可以将派生类的对象赋值给基类的指针或引用，反之不可
+- virtual function 虚函数
+	- 什么时候不能用
+		- 普通函数（非类成员函数）不能是虚函数
+		- 静态函数（static）不能是虚函数
+		- 构造函数不能是虚函数，因为在调用构造函数时，虚表指针并没有在对象的内存空间中，必须要构造函数调用完成后才会形成虚表指针
+		- 内联函数不能是表现多态性时的虚函数，见上面 inline 部分
+	- 虚析构函数
+		- 是为了解决基类的指针指向派生类对象，并用基类的指针删除派生类对象
+	- 纯虚函数
+		- 是一种特殊的虚函数，在基类中不能对虚函数给出有意义的实现，而把它声明为纯虚函数，它的实现留给该基类的派生类去做：`virtual int foo() = 0;`
+		- 类里如果声明了虚函数，这个函数是实现的，哪怕是空实现，它的作用就是为了能让这个函数在它的子类里面可以被override，这样编译器就可以使用后期绑定来达到多态；而纯虚函数只是一个接口，是个函数的声明而已，它要留到子类里去实现
+		- 虚函数在子类里面可以不重写；但纯虚函数必须在子类实现才可以实例化子类
+		- 虚函数的类用于 “实作继承”，继承接口的同时也继承了父类的实现；纯虚函数关注的是接口的统一性，实现由子类完成
+		- 带纯虚函数的类叫抽象类，这种类不能直接生成对象，而只有被继承，并重写其虚函数后，才能使用。抽象类被继承后，子类可以继续是抽象类，也可以是普通类
+		- 虚基类是虚继承中的基类，具体见下文虚继承
+		- https://blog.csdn.net/u012260238/article/details/53610462
+	- 虚函数指针
+		- 在含有虚函数类的对象中，指向虚函数表，在运行时确定
+	- 虚函数表
+		- 在程序只读数据段（即.rodata section，见目标文件存储结构部分(todo)）存放虚函数指针，如果派生类实现了基类的某个虚函数，则在虚表中覆盖原本基类的那个虚函数指针，在编译时根据类的声明创建
+		- https://blog.twofei.com/496/
+		- 每个包含了虚函数的类都包含一个虚表，所以如果一个基类包含了虚函数，那么其继承类也可调用这些虚函数，这个类也拥有自己的虚表，虚表中的指针会指向其继承的最近的一个类的虚函数（如果继承类重写了虚函数，那就会有新的虚函数指针）
+		- 虚表是一个指针数组，其元素是虚函数的指针，每个元素对应一个虚函数的函数指针，其赋值发生在编译器的编译阶段
+		- 普通的函数即非虚函数的调用不需要经过虚表，所以虚表的元素并不包括普通函数的函数指针
+		- 虚表是属于类的，同一个类的所有对象都使用同一个虚表，为了让每个对象都拥有一个虚表指针，编译器在类中添加了一个指针，`*__vptr`，用来指向虚表，当类的对象在创建时便拥有了这个指针，且这个指针的值会自动被设置为指向类的虚表
+		- 注意：由于 `*__vptr` 在对象创建时就已经建立，如果使用 `Base *p = &derivedObject; p->virtual_function()`，叫的还是继承类的虚函数，也就是说，即使使用的是基类的指针来调用函数，也可以达到正确调用运行中实际对象的虚函数
+		- https://zhuanlan.zhihu.com/p/75172640
+	- 动态绑定
+		- 经过虚表调用虚函数的过程称为动态绑定，其表现出来的现象称为运行时多态。动态绑定区别于传统的函数调用，传统的函数调用称之为静态绑定，即函数的调用在编译阶段就可以确定下来
+		- 什么时候会执行函数的动态绑定：通过指针来调用虚函数，且指针upcast向上转型（继承类向基类的转换）
+	- 模板
+		- 模板类可以使用虚函数
+		- 一个类（无论是普通类还是模板类）的成员模板（本身是模板的成员函数）不能是虚函数
+	- 抽象类
+		- 含有纯虚函数的类
+	- 接口类
+		- 只含有纯虚函数的类
+	- 聚合类 (todo)
+		- 用户可以直接访问其成员，并且具有特殊的初始化语法形式
+		- 所有成员都是 public，没有定义任何构造函数、没有类内初始化、没有基类、也没有 virtual 函数
+- virtual inheritance 虚继承
+	- 用于解决多继承条件下的菱形继承问题（浪费存储空间、命名冲突）
+	- 虚继承使得在派生类中只保留一份间接基类的成员
+	- 目的是让某个类做出声明，承诺愿意共享它的基类。其中，这个被共享的基类就称为虚基类（Virtual Base Class），不论虚基类在继承体系中出现了多少次，在派生类中都只包含一份虚基类的成员
+	- http://c.biancheng.net/view/2280.html
+	- 底层实现原理与编译器相关，一般通过虚基类指针和虚基类表实现，每个虚继承的子类都有一个虚基类指针（占用一个指针的存储空间，4字节）和虚基类表（不占用类对象的存储空间）（需要强调的是，虚基类依旧会在子类里面存在拷贝，只是仅仅最多存在一份而已，并不是不在子类里面了）；当虚继承的子类被当做父类继承时，虚基类指针也会被继承
+	- 虚基类表指针（vbptr, virtual base table pointer）指向了一个虚基类表（virtual table），虚基类表中记录了虚基类与本类的偏移地址；通过偏移地址就找到了虚基类成员，而虚继承也不用像普通多继承那样维持着公共基类（虚基类）的两份同样的拷贝，节省了存储空间
+- 虚函数 vs. 虚继承
+	- 相同之处
+		- 都利用了虚指针和虚表
+	- 不同之处
+		- 虚基类依旧存在继承类中，只占用一次存储空间；虚基类表存储的是虚基类相对直接继承类的偏移
+		- 虚函数不占用存储空间；虚函数表存储的是虚函数地址
+- 内存分配和管理
+	- `malloc`
+		- 申请指定字节数的内存，申请到的内存中的初始值不确定
+		- e.g. `char *str = (char*) malloc(100);`
+		- 确实是否成功： `assert(str != nullptr);`
+	- `free`: `free(p); p = nullptr;`
+	- `new`, `new[]`
+		- 先底层调用 malloc 分配内存，然后调用构造函数创建对象
+		- e.g. `T* t = new T();`
+		- new 在申请内存时会自动计算所需字节数，而 malloc 则需我们自己输入申请内存空间的字节数
+	- `delete`, `delete[]`
+		- 先调用析构函数清理资源，然后底层调用 free 释放空间
+		- e.g. `delete t; t = nullptr;`
+	- `delete this`
+		- 合法，但
+		- 必须保证 this 对象是通过 new（不是 new[]、不是 placement new、不是栈上、不是全局、不是其他对象成员）分配的
+		- 必须保证调用 delete this 的成员函数是最后一个调用 this 的成员函数
+		- 必须保证成员函数的 delete this 后面没有调用 this 了
+		- 必须保证 delete this 后没有人使用了
+		- https://isocpp.org/wiki/faq/freestore-mgmt#delete-this
+	- 定位 new (placement new) (todo)
+		- 允许我们向 new 传递额外的地址参数，从而在预先指定的内存区域创建对象
+	- 其他
+		- `calloc` 为指定长度的对象，分配能容纳其指定个数的内存，申请到的内存的每一位 bit 都初始化为 0
+		- `realloc` 更改以前分配的内存长度（增加或减少）。当增加长度时，可能需将以前分配区的内容移到另一个足够大的区域，而新增区域内的初始值则不确定
+		- `alloca` 在栈上申请内存，程序在出栈的时候，会自动释放内存。但 alloca 不具可移植性, 而且在没有传统堆栈的机器上很难实现。alloca 不宜使用在必须广泛移植的程序中。C99 中支持变长数组 (VLA)，可以用来替代 alloca
+- 智能指针
+	- `#include <memory>`
+	- C++ 11 `shared_ptr`
+		- 实现共享式拥有（shared ownership）概念。多个智能指针指向相同对象，该对象和其相关资源会在 “最后一个 reference 被销毁” 时被释放。为了在结构较复杂的情景中执行上述工作，标准库提供 weak_ptr、bad_weak_ptr 和 enable_shared_from_this 等辅助类
+		- 多个智能指针可以共享同一个对象，对象的最末一个拥有着有责任销毁对象，并清理与该对象相关的所有资源
+		- 支持定制型删除器（custom deleter），可防范 Cross-DLL 问题（对象在动态链接库（DLL）中被 new 创建，却在另一个 DLL 内被 delete 销毁）、自动解除互斥锁
+		- http://c.biancheng.net/view/7898.html (todo)
+	- C++ 11 `weak_ptr`
+		- 允许共享但不拥有某对象，一旦最末一个拥有该对象的智能指针失去了所有权，任何 weak_ptr 都会自动成空（empty）。因此，在 default 和 copy 构造函数之外，weak_ptr 只提供 “接受一个 shared_ptr” 的构造函数
+		- 可打破环状引用（cycles of references，两个其实已经没有被使用的对象彼此互指，使之看似还在 “被使用” 的状态）的问题
+	- C++ 11 `unique_ptr`
+		- 实现独占式拥有（exclusive ownership）或严格拥有（strict ownership）概念，保证同一时间内只有一个智能指针可以指向该对象。你可以移交拥有权。它对于避免内存泄漏（resource leak）——如 new 后忘记 delete ——特别有用
+		- 可以确保一个对象和其相应的资源同一时间只被一个 pointer 拥有。一旦拥有者被销毁或编程 empty，或开始拥有另一个对象，先前拥有的那个对象就会被销毁，其任何相应资源亦会被释放
+	- C++ 98 `auto_ptr`
+		- e.g. `std::auto_ptr<std::string> ps (new std::string(str));`
+		- 被 C++ 11 `unique_ptr` 取代，原因是缺乏语言特性如 “针对构造和赋值” 的 std::move 语义，以及其他瑕疵
+		- auto_ptr 可以赋值拷贝，复制拷贝后所有权转移；unqiue_ptr 无拷贝赋值语义，但实现了 move 语义
+		- auto_ptr 对象不能管理数组（析构调用 delete），unique_ptr 可以管理数组（析构调用 delete[] ）
+	- https://zhuanlan.zhihu.com/p/526147194 (todo)
+- 强制类型转换
+	- `static_cast`
+		- 用于非多态类型的转换
+		- 不执行运行时类型检查（转换安全性不如 dynamic_cast）
+		- 通常用于转换数值数据类型（如 float -> int）
+		- 可以在整个类层次结构中移动指针，子类转化为父类安全（向上转换，也是隐式转换），父类转化为子类不安全（因为子类可能有不在父类的字段或方法）
+	- `dynamic_cast`
+		- 用于多态类型的转换
+		- 执行运行时类型检查
+		- 只适用于指针或引用
+		- 对不明确的指针的转换将失败（返回 nullptr），但不引发异常
+		- 可以在整个类层次结构中移动指针，包括向上转换、向下转换
+	- `const_cast`
+		- 用于删除 const、volatile 和 `__unaligned` 特性（如将 const int 类型转换为 int 类型 ）
+	- `reinterpret_cast`
+		- 用于位的简单重新解释
+		- 滥用 reinterpret_cast 运算符可能很容易带来风险，除非所需转换本身是低级别的，否则应使用其他强制转换运算符之一
+		- 允许将任何指针转换为任何其他指针类型（如 char* 到 int* 或 One_class* 到 Unrelated_class* 之类的转换，但其本身并不安全），也允许将任何整数类型转换为任何指针类型以及反向转换
+		- reinterpret_cast 运算符不能丢掉 const、volatile 或 `__unaligned` 特性
+		- 实际用途是在哈希函数中，即通过让两个不同的值几乎不以相同的索引结尾的方式将值映射到索引
+	- `bad_cast`
+		- 由于强制转换为引用类型失败，dynamic_cast 运算符引发 bad_cast 异常
+		- e.g. `try { A& a = dynamic_cast<A&>(not_a); } catch (bad_cast b) { *do something* }`
+- 运行时类型信息 (RTTI) (todo)
+	- dynamic_cast
+	- `typeid`
+		- typeid 运算符允许在运行时确定对象的类型
+		- type_id 返回一个 type_info 对象的引用
+		- 如果想通过基类的指针获得派生类的数据类型，基类必须带有虚函数
+		- 只能获取对象的实际类型
+	- `type_info`
+		- type_info 类描述编译器在程序中生成的类型信息，此类的对象可以有效存储指向类型的名称的指针。
+		- type_info 类还可存储适合比较两个类型是否相等或比较其排列顺序的编码值。类型的编码规则和排列顺序是未指定的，并且可能因程序而异
 
+**Aside**
+
+- 如何定义一个只能在堆上（栈上）生成对象的类
+	- 只能在堆上
+		- 方法：将析构函数设置为私有
+		- 原因：C++ 是静态绑定语言，编译器管理栈上对象的生命周期，编译器在为类对象分配栈空间时，会先检查类的析构函数的访问性。若析构函数不可访问，则不能在栈上创建对象
+	- 只能在栈上
+		- 方法：将 new 和 delete 重载为私有
+		- 原因：在堆上生成对象，使用 new 关键词操作，其过程分为两阶段：第一阶段，使用 new 在堆上寻找可用内存，分配给对象；第二阶段，调用构造函数生成对象。将 new 操作设置为私有，那么第一阶段就无法完成，就不能够在堆上生成对象
+	- https://www.nowcoder.com/questionTerminal/0a584aa13f804f3ea72b442a065a7618
+
+**Effective**
+
+- todo
+
+**Data Structure**
+
+- todo
 
 ### OS
 
-
+- 进程与线程
+	- 私有资源
+	- 共享资源
+	- 对比
+	- 选择
+- 进程之间的通信方式和优缺点
+- 线程之间的通信方式
+- Linux 内核同步方式
+- 死锁
+- 主机字节序与网络字节序
+- 页面置换算法
 
 ### System Design
 
@@ -122,7 +479,20 @@
 
 ### Network
 
-
+- Socket 中 TCP 的三次握手建立连接
+	- 客户端向服务器发送一个 SYN J
+	- 服务器向客户端响应一个 SYN K，并对 SYN J 进行确认 ACK J+1
+	- 客户端再向服务器发一个确认 ACK K+1
+	- 具体
+		- 当客户端调用 connect 时，触发了连接请求，向服务器发送了 SYN J 包，这时 connect 进入阻塞状态
+		- 服务器监听到连接请求，即收到 SYN J 包，调用 accept 函数接收请求向客户端发送 SYN K ，ACK J+1，这时 accept 进入阻塞状态
+		- 客户端收到服务器的 SYN K ，ACK J+1 之后，这时 connect 返回，并对 SYN K 进行确认
+		- 服务器收到 ACK K+1 时，accept 返回，至此三次握手完毕，连接建立
+- Socket 中 TCP 的四次握手释放连接
+	- 某个应用进程首先调用 close 主动关闭连接，这时 TCP 发送一个 FIN M
+	- 另一端接收到 FIN M 之后，执行被动关闭，对这个 FIN 进行确认。它的接收也作为文件结束符传递给应用进程，因为 FIN 的接收意味着应用进程在相应的连接上再也接收不到额外数据
+	- 一段时间之后，接收到文件结束符的应用进程调用 close 关闭它的 socket，这导致它的 TCP 也发送一个 FIN N
+	- 接收到这个 FIN 的源发送端 TCP 对它进行确认，这样每个方向上都有一个 FIN 和 ACK
 
 ### Database
 
