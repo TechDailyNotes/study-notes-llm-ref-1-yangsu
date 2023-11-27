@@ -550,14 +550,13 @@
 	- 合并AB之后，所有原来切成A+B两个tokens的就只保留AB一个token，整个训练集上最大似然变化量与P(AB)/(P(A) * P(B))成正比
 - Unigram
 	- 从一个巨大的词汇表出发，再逐渐删除trim down其中的词汇，直到size满足预定义
-	- 初始的词汇表可以采用所有预分词器分出来的词，再加上所有高频的子串。
-每次从词汇表中删除词汇的原则是使预定义的损失最小
+	- 初始的词汇表可以采用所有预分词器分出来的词，再加上所有高频的子串。每次从词汇表中删除词汇的原则是使预定义的损失最小
 
 **Architecture**
 
 - Causal Decoder (Anything else)
 - Prefix Decoder (GLM)
-- MoE (Switch Transformer)
+- MoE (Switch Transformer, GPT-4)
 - SSM (S4)
 
 **Layer Norm**
@@ -568,25 +567,25 @@
 - pre RMSNorm (LLaMa, T5, Gopher, Chinchilla)
 	- 对LayerNorm的一个改进，没有做re-center操作（移除了其中的均值项），可以看作LayerNorm在均值为0时的一个特例
 - post DeepNorm (GLM)
+	- 给x乘一个0到1的constant再加F(x)，然后LN
 - pre LayerNorm (GPT3, PanGU, OPT, PaLM, BLOOM, Galactica)
 - Sandwich-LN
+	- x + LN(F(LN(x)))，给F(x)再LN一次，训练容易不稳定
 
 **Activation**
 
-- ReLU
-- GeLU
-- Swish
-- SwiGLU
-- GeGLU
+- ReLU: max(0, x), some used
+- GeLU: smoother ReLU, most used
+- Swish: x * Sigmoid(x)
+- SwiGLU: Swish(xW) * (xV), some used
+- GeGLU: GeLU(xW) * (xV), some used
 
 **Position Encoding**
 
 - Absolute: xi = xi + pi
-- Relative: Aij = Wq xi xj.T Wk.T + r_{i-j}
-- T5 bias
-- ALiBi
-- RoPE
-- xPos
+- Relative: Aij = Q * K.T + r_{i-j}
+- ALiBi: Aij = Q * K.T + m * abs(i-j)
+- RoPE: Aij = Q * R_{theta, i-j} * K.T
 - position encoding/embedding 区别
 	- encoding固定式，embedding学习式
 	- embedding，存一个hidden_dim x seq_len 的可学习矩阵，问题：不能随着seq_len的增加而改变
@@ -630,6 +629,12 @@
 		- shows the reasoning format is more important than reasoning correctness
 - Planning for Complex Task Solving
 
+**Reasoning**
+
+- Reasoning-via-Planning (RAP)
+- Tree-of-Thought (ToT)
+- Beam Search
+
 **Evaluation**
 
 ### InstructGPT
@@ -670,6 +675,7 @@
 
 ### LLM ++
 
+- source: https://lilianweng.github.io/posts/2023-01-27-the-transformer-family-v2/
 - [denote close source]
 
 **2019**
@@ -758,11 +764,11 @@
 	- BBPE: Byte-level BPE - 好处：很多字符出现的频率很低频，但是词表会变得很大，以至于存储和训练的成本都很高，并且稀有词往往很难学好，BBPE用UTF-8给所有可能的字符都编码，词表可以相比于BPE减少到1/8
 	- 为什么LLaMA词表里只有700+的汉字，但是也能表示中文: 用BBPE，不存在的汉字用字节合成就可以
 	- 既然LLaMA的分词器是基于UTF-8的BBPE，是不是所有的模型通用一个分词器即可，不需额外训练：不可以，LLaMA尽管能支持中文，但是表示效率很低，一个中文字符在UTF-8表示为3个字节，意味着：最差情况下，1个汉字要编码成3个token，但是如果在中文语料上训练分词器，很多2个汉字组成的词会被编码为1个token。大模型是逐个token生成，推理速度都是按token计算的，所以如果推理速度相同，LLaMA生成中文的速度会远慢于在专门在中文上训练的GLM系列模型
-- GPT-4
-- Alpaca
+- [GPT-4] (OpenAI)
+- Alpaca (Stanford)
 	- todo
-- Claude
-- LLaMa2
+- [Claude] (Claude)
+- LLaMa2 (Meta)
 	- todo
 
 ### LLM Aside
@@ -790,10 +796,6 @@
 	- 解码阶段：使用并更新KV cache，一个接一个地生成词，当前生成的词依赖于之前已经生成的词
 - 显存占用分析
 	- 假设输入序列的长度为input_len，输出序列的长度为 output_len, 以float16来保存KV cache，那么KV cache的峰值显存占用大小为 batch_size * (input_len + output_len) * num_layer * 2 * 2，这里第一个2表示K/V cache，第二个2表示float16占2个bytes
-
-**Beam Search**
-
-- todo
 
 ### RLHF
 
@@ -830,3 +832,321 @@
 	- confidence calibration - user persuasion still leads to factual errors (caz of RLHF?)
 	- continual learning: update itself during changing environment
 	- personalization
+
+### LLM Agent
+
+- source: https://lilianweng.github.io/posts/2023-06-23-agent/
+- planning
+	- subgoal and decomposition
+	- reflection and refinement: self-critic, learn from mistake
+- memory
+	- short-term: in-context learning, prompt engineering
+	- long-term: vector store and retrieval
+- tool use
+	- call external APIs
+
+**Planning**
+
+- task decomposition
+	- chain of thought: "think step by step"
+	- tree of thought: multiple thought steps -> tree like structure
+	- LLM+P (planning domain definition language, PDDL)
+- self-reflection
+	- ReAct: thought -> action -> observation
+	- Reflexion: RL setup, .. observation -> heruistic (inefficient?, hallucination? - stop) -> reset env?
+- chain of hindsight
+	- improve output by presenting it as a sequence of past outputs with feedback
+	- fine-tuned to predict better output by feedback
+	- MLE to pre-training with regularization to avoid over-fitting
+- algorithm distillation
+	- learn the process of RL instead of training task-specific policy
+	- in-context, offline RL
+	- others: expert distillation, source policy, RL^2
+
+**Memory**
+
+- types of memory
+	- sensory memory - last < few seconds: iconic (visual), echoic (auditory), haptic (touch)
+	- short-term/working memory - last 20~30 seconds: cognitive tasks, learning and reasoning
+	- long-term memory - few days to decade
+		- explicit/declarative memory - conscious, episodic (events, experience) and semantic (facts, concepts)
+		- implicit/procedural memory - unconscious (riding, typing)
+	- mappings
+		- sensory -> input embeddings
+		- short-term -> in-context learning
+		- long-term -> external vector store, query and retrieval
+- MIPS (maximum inner product search)
+	- refer to fast retrieval in vector database with ANN (approx. nearest neighbor) search
+	- LSH (locality-sensitive hashing): with hashing function
+	- ANNOY (approx. nearest neighbors oh yeah): with random projection trees - mimics hashing, related to KD tree but more scalable
+	- HNSW (hierarchical navigable small world): mimics "six degrees of sepration" of social network - nodes can be reached by other nodes very fast - small world networks
+	- FAISS (Facebook AI similarity search): node distance follows normal distribution -> partition vector space into clusters -> search within clusters
+	- ScaNN (scalable nearest neighbors): anisotropic vector quantization (todo)
+	- resource: https://ann-benchmarks.com/
+
+**Tool Use**
+
+- MRKL (modular reasoning, knowledge and language)
+	- a collection of "expert" modules for the general-purpose LLM to select, modules can be neural networks or symbolic (APIs)
+	- LLMs fail to extract right arguments for basic arithmetic reliably
+	- thus knowing when and how to use external symbolic tools is important
+- TALM (tool augmented language models) & ToolFormer
+	- fine-tune LLM to learn to use external tool APIs
+- HuggingGPT
+	- use ChatGPT as task planner to select module in HuggingFace platform
+
+- stages
+	- task planning: parse user input to multiple tasks -> task type, ID, dependencies, arguments
+	- model selection: multiple choice question with task type based filtration
+	- task execution: by each expert model
+	- response generation: LLM receive execution result and summarize
+
+- API-Bank: evaluate tool-agumented LLMs by
+	- whether an API call is needed
+	- identify the right API to call
+	- response based on the API results
+	- 3-level: call API -> retrieve API -> plan API beyond retrieve and call
+
+**Case Studies**
+
+- scientific discovery agent
+	- ChemCrow from LangChain
+- generative agents simulation
+	- generative agents by Stanford: memory stream, retrieval model, reflection mechanism, planning & reacting
+- proof-of-concept examples
+	- AutoGPT: a lot of format parsing
+	- GPT-Engineer: small componenets -> full chunk of code
+
+**Challenages**
+
+- finite context length
+- long-term planning and task decomposition
+- reliability of natural language interface
+
+### LLM Multi-GPU Training
+
+- source: https://lilianweng.github.io/posts/2021-09-25-train-large/
+
+**Training Parallelism**
+
+- data parallelism: split batched data to different machine (need sync)
+- model parallelism: split weights to different machine
+- pipeline parallelism: above two combined
+- tensor parallelsim: split matrix computation
+
+**Mixture-of-Experts**
+
+- built upon ensemble learning
+	- MoE
+	- GShard
+	- Switch Transformer
+	- Export Choice
+
+**Other Memory Saving Designs**
+
+- CPU offloading: less popular now - slow down training
+- activation recomputation: i.e. gradient checkpointing
+- mixed precision training
+	- full-precision master copy of weights
+	- loss scaling
+	- arithmetic precision
+- compression: Gist (todo)
+- memory-efficient optimizer
+	- Adam -> Adafactor, SM3
+	- ZeRO (zero redundancy optimizer): ZeRO-DP enhanced data parallelism, ZeRO-R enhanced residual states (memory consumption optimization)
+
+### LLM Inference Optimization
+
+- source: https://lilianweng.github.io/posts/2023-01-10-inference-optimization/
+
+### LLM Alignment with Human
+
+- source (survey): https://github.com/GaryYufei/AlignLLMHumanSurvey
+- source (individual): https://github.com/Hannibal046/Awesome-LLM/blob/main/paper_list/alignment.md
+
+**Alignment Data**
+
+- instruction from human
+	- pre-existing human-annotated NLP Benchmarks
+		- PromptSource
+		- SuperNaturalInstruction
+		- FLAN
+		- Unnatural Instructions
+		- OIG
+	- hand-crafed instructions
+		- Dolly-v2
+		- OpenAssistant
+		- COIG
+		- ShareGPT
+- instruction from strong LLMs
+	- improve input quality: add metadata/external info
+		- self-instruct: diversity issue -> classification tasks or not
+		- Lamini-lm
+		- Baize
+		- AttrPrompt
+		- WizardLM: Evol-Instruct -> gradually more complex
+		- WizardCoder
+		- Unnatural Instructions
+		- Phi-1
+	- improve output quality
+		- CoT: reasoning-provoking conditions
+		- Orca: respond with system prompts
+		- Lion: monitoring quality with external LLM-based evaluation
+		- Self-Alignment: hand-crafted guilding principles
+		- Phoenix: role-playing conditions
+		- Expert Prompting: expert profile as intermediate response
+	- multi-turn instructions
+		- Baize: self-chatting with Chat-3.5 from popular QA websites
+		- CAMEL: role-playing AI users & assistants
+		- SelFee: self-revise its own answer
+		- UltraLLaMA: wide real-world info
+		- Vicuna: use instructions from ShareGPT
+	- multilingual instructions: translation
+		- Phoenix: post-answering (translate instruction), post-translating (translate responce)
+		- BayLing: multi-turn instructions are essentially translation tasks
+		- BactrianX: construct instruction w/ translation then fine-tune LLaMA with LoRA
+- instruction data management
+	- instruction implications: how to improve reasoning
+		- TULU: instructions pertaining to COT and coding are useful for augmenting reasoning ability of LLMs
+		- FLACUNA: FLAN-style instructions + synthetic ones from GPT-4 are useful for reasoning tasks
+		- Data-Constrained LM: add 50% programming instructions is useful for reasoning tasks without affecting other tasks
+		- BELLE: more data in instructions are useful for non-complex reasoning NLP tasks (IR, summarization, Closed QA, etc.)
+	- instruction quantity: how many is needed
+		- IFS: early-stopping criterion by training a classifier on conversation vs. answer-like output, 8k instructions to LLaMA -> high IFS score, more -> (maybe) LLM semantic shift
+		- LIMA: 6k high-quality ones suffice (to align with human preference)
+		- Instruction Mining: identify what features in instructions make them high quality by experimenting LLMs performance
+		- Alpagasus: use ChatGPT to assign scores to instructions and select high ones -> gives better LLMs with 9k wrt. 52k total
+
+**Alignment Training**
+
+- online human alignment
+	- RLHF (reinforcement learning w/ human feedback)
+		1. SFT model on instruction set
+		2. reward model R on ranked comparison response pairs
+		3. optimize SFT (policy) model under PPO with reward produced by R
+		- add KL-divergence regularization to (current model, SFT model) in step 1. to avoid over-optimization
+		- issue: PPO is non-stable
+	- RAFT (reward ranked finetuning)
+		1. sample instructions and let current LLM to give responses
+		2. given an existing reward model, select top 1/k instances for SFT training
+		- can also be used in offline alignment where the global instruction set is continually updated w/ top-ranked instructions -> improve training data quality each step
+- offline human alignment (ranking-based training)
+	- DPO (direct preference optimization)
+		- optimize reward + KL-divergence to SFT model directly
+		- RL is no longer needed
+	- PRO (preference ranking optimization)
+		- given a list of ranked responses to instruction set, optimize the loss of each ranked response to the ones with lower ranked responses
+		- also add SFT objective to regularize
+	- RRHF (rank response to align LM)
+		- use list rank loss w/o margin terms
+		- find SFT objective a better regularization than KL divergence -> different ranking methods for different model sizes
+	- SLiC (sequence likelihood calibration)
+		- tried various ranking functions + regularization
+		- but only use BERTScore and <2B models
+		- rank loss + KL is the best
+- offline human alignment (language-based training): no RL, SFT with human preference
+	- Conditional Behavior Cloning
+		- train LLM to distinguish high vs. low quality instruction responses w/ prompt prefixes
+	- CoH (chain of hindsight)
+		- directly assign human feedback w/ LLM responses, then train loss only on response pairs
+		- at inference time, prompt the model to generate good response
+		- also use SFT objective + random word masking to regularize
+	- Second Thoughts
+		- train LLM to produce edit operations from low-quality to high-quality responses
+	- Stable Alignment (realignment)
+		- revise responses based on previous low-quality feedback and instructions
+		- instruct LLM to self-correct when they generate bad responses
+	- SelFee (multi-turn self-revision)
+		- use ChatGPT to revise instructions until it elects to terminate
+- parameter-efficient training
+	1. supplementary parameters
+	- Prefix Tuning: prepend trainable tokens in input layer
+	- Prompt Tuning: prepend trainable tokens in hidden layer
+	- Unified Prompt: combine above
+	2. shadow parameters: training the weight representing model variance, w/o modifying parameters during inference
+	- LoRA
+		- add rank-decomposition trainable weight matrices to model layers, keep original weight matrices frozen
+		- equally allocate LoRA matrices to each layer, each matrix ABx makes hidden size (of x) h -> r -> h'
+		- r << min(h, h')
+	- AdaLoRA
+		- calculate different layers' parameter importances w/ training gradient
+		- use different LoRA matrices (different r) for different layers
+	- QLoRA
+		- quantized 4-bit backbone + paged optimizers + LoRA
+	3. trade-offs
+	- under-fitting: w/ LoRA < w/ fully fine-tuned
+	- also find larger LLMs > larger instruction set in LoRA training in both training cost and performance
+
+**Alignment Evaluation**
+
+- closed-set benchmarks
+	- general knowledge
+		- MMLU
+		- C-MMLU
+		- C-Eval
+		- Kola
+		- M3KE
+		- AGIEval
+	- reasoning
+		- GSM8K
+		- Maths
+		- CSQA
+		- StrategyQA
+		- CoinFlip
+		- BBH
+	- Coding
+		- MBPP
+		- DS-100
+		- HumanEval(+)
+- open-set benchmarks
+	- Vicuna-80
+	- Open-Assistant-953
+	- User-Instructions-252
+	- FLASK
+	- MT-Bench
+	- AlpacaEval
+- human-based evaluation
+	- Ordinal Classification
+	- Pairwise Comparison
+	- Elo
+- LLM-based evaluation
+	- reference-free
+		- GPTEval
+		- GPTScore
+		- Explicit Score
+		- LM Examiner
+		- FactScore
+		- Alignscore
+	- LLM bias in evaluation
+		- Positional Bias
+		- Multi-Elo
+		- LLM-as-a-Judge
+	- LLMs for evaluation: PandaLM
+
+**Further**
+
+- fine-grained instruction data management
+	- FLAN & programming instruction -> improve reasoning
+	- ShareGPT -> generally well on wide range of benchmarks
+	- questions
+		- optimal quality control of instruction data
+		- optimal instruction training sequence
+		- how to effectively mix-up different instruction
+- LLMs alignment for non-english languages
+	- language-agnostic: complex instruction generation, explanation tuning
+	- questions
+		- how these approaches perform in other, especially low-resource languages
+		- how to effectively transfer the effect of alignment across different languages
+	- i.e., enlgish LLaMA tokenizes chinese characters very long and has very few of them -> two-stage chinese pre-training solution for LLaMA is proposed -> add chinses token embeddings and keep other parameters frozen, then use LoRA and jointly train word embeddings
+- more on LLMs alignment training
+	- SFT require a lot instruction and training resources as they do not explicitly incorporate human preferences
+	- questions
+		- how to design resource-constrained LLM alignment training framework (i.e. certain resources are given at a certain level, limited to 10k instructions, 5hrs training time, etc.) -> also ways to evaluate different frameworks effectiveness
+- human-in-the-loop LLMs alignment data generation
+	- ShareGPT is good for a wide range of NLP tasks -> human is a key factor in improving LLMs alignment quality -> human can determine what LLMs should generate
+	- questions
+		- what are other human-in-the-loop solutions for alignment
+- human-LLM joint evaluation framework
+	- both human and LLM have their stength in certain aspects of evaluation
+	- questions
+		- how to combine the evaluation of both human and LLMs while maintaining efficiency and quality of the evaluation
